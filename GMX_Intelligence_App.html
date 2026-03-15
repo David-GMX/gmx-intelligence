@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>GMX Field Intelligence</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════
+   DESIGN DIRECTION: Industrial-Premium
+   Dark command-centre feel with copper/amber 
+   accents — like a mining operations dashboard
+   ═══════════════════════════════ */
+:root {
+  --ink:      #0C1017;
+  --deep:     #111820;
+  --surface:  #19232E;
+  --panel:    #1F2D3A;
+  --raised:   #253444;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --copper:   #C87941;
+  --copper2:  #E8954A;
+  --gold:     #D4A843;
+  --sky:      #4A9EBF;
+  --teal:     #2A8C7A;
+  --red:      #C04A3A;
+  --green:    #3A8C5A;
+  --purple:   #7A4A9E;
+  --muted:    rgba(255,255,255,0.35);
+  --text:     rgba(255,255,255,0.87);
+  --textdim:  rgba(255,255,255,0.55);
+  --radius:   12px;
+  --radius-lg:18px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+body{
+  font-family:'Space Grotesk',sans-serif;
+  background:var(--ink);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--raised);border-radius:3px}
+
+/* ══════════════════════════════════════════
+   AUTH SCREEN
+══════════════════════════════════════════ */
+#auth-screen{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;
+  background:var(--ink);
+  position:relative;overflow:hidden;
+}
+#auth-screen::before{
+  content:'';position:absolute;
+  width:600px;height:600px;
+  background:radial-gradient(circle, rgba(200,121,65,0.12) 0%, transparent 70%);
+  top:-100px;right:-100px;pointer-events:none;
+}
+#auth-screen::after{
+  content:'';position:absolute;
+  width:400px;height:400px;
+  background:radial-gradient(circle, rgba(74,158,191,0.08) 0%, transparent 70%);
+  bottom:-50px;left:-50px;pointer-events:none;
+}
+
+.auth-card{
+  width:100%;max-width:400px;
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:var(--radius-lg);
+  padding:44px 40px;
+  position:relative;z-index:1;
+  box-shadow:0 40px 80px rgba(0,0,0,0.5);
+}
+
+.auth-logo{
+  text-align:center;margin-bottom:32px;
+}
+.auth-logo-mark{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:56px;height:56px;
+  background:linear-gradient(135deg, var(--copper), var(--gold));
+  border-radius:16px;
+  font-family:'Instrument Serif',serif;
+  font-size:22px;color:#fff;font-weight:400;
+  margin-bottom:16px;
+  box-shadow:0 8px 24px rgba(200,121,65,0.35);
+}
+.auth-title{
+  font-family:'Instrument Serif',serif;
+  font-size:22px;color:var(--text);
+  font-style:italic;margin-bottom:4px;
+}
+.auth-sub{font-size:12px;color:var(--textdim);letter-spacing:0.5px}
+
+.auth-error{
+  background:rgba(192,74,58,0.15);
+  border:1px solid rgba(192,74,58,0.3);
+  border-radius:8px;padding:10px 14px;
+  font-size:12px;color:#E8806A;
+  margin-bottom:16px;display:none;
+}
+
+.field{margin-bottom:16px}
+.field label{
+  display:block;font-size:11px;font-weight:600;
+  color:var(--textdim);text-transform:uppercase;
+  letter-spacing:0.8px;margin-bottom:7px;
+}
+.field input{
+  width:100%;padding:12px 14px;
+  background:var(--panel);
+  border:1.5px solid var(--border2);
+  border-radius:var(--radius);
+  color:var(--text);font-family:'Space Grotesk',sans-serif;
+  font-size:14px;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;
+}
+.field input:focus{
+  border-color:var(--copper);
+  box-shadow:0 0 0 3px rgba(200,121,65,0.15);
+}
+
+.btn-google{
+  width:100%;padding:13px 16px;
+  background:#fff;
+  border:none;border-radius:var(--radius);
+  color:#3c4043;font-family:'Space Grotesk',sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+  transition:all 0.2s;margin-top:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  display:flex;align-items:center;justify-content:center;gap:12px;
+}
+.btn-google:hover{box-shadow:0 4px 16px rgba(0,0,0,0.35);transform:translateY(-1px)}
+.btn-google:active{transform:translateY(0)}
+.btn-google:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+
+/* ══════════════════════════════════════════
+   APP SHELL
+══════════════════════════════════════════ */
+#app{display:none;min-height:100vh;padding-bottom:72px}
+
+/* ── TOP BAR ── */
+.topbar{
+  background:var(--deep);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  height:58px;
+  display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:80;
+}
+.topbar-logo{
+  display:flex;align-items:center;gap:10px;
+}
+.topbar-mark{
+  width:32px;height:32px;
+  background:linear-gradient(135deg,var(--copper),var(--gold));
+  border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Instrument Serif',serif;font-size:13px;color:#fff;
+}
+.topbar-name{
+  font-family:'Instrument Serif',serif;
+  font-size:17px;color:var(--text);font-style:italic;
+}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 10px;border-radius:20px;
+  background:var(--panel);border:1px solid var(--border2);
+  font-size:12px;font-weight:500;color:var(--text);
+}
+.user-dot{width:7px;height:7px;border-radius:50%;background:var(--teal)}
+.btn-signout{
+  padding:6px 12px;border-radius:8px;
+  background:transparent;border:1px solid var(--border2);
+  color:var(--textdim);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all 0.2s;font-family:'Space Grotesk',sans-serif;
+  text-transform:uppercase;letter-spacing:0.5px;
+}
+.btn-signout:hover{border-color:var(--red);color:var(--red)}
+
+/* ── BOTTOM NAV (mobile) ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--deep);
+  border-top:1px solid var(--border2);
+  display:flex;z-index:80;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.bnav-btn{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:10px 4px;gap:3px;
+  background:transparent;border:none;cursor:pointer;
+  color:var(--textdim);font-family:'Space Grotesk',sans-serif;
+  font-size:9px;font-weight:500;text-transform:uppercase;
+  letter-spacing:0.5px;transition:color 0.2s;
+}
+.bnav-btn .ico{font-size:20px;transition:transform 0.2s}
+.bnav-btn.active{color:var(--copper)}
+.bnav-btn.active .ico{transform:scale(1.1)}
+
+/* ── PANELS ── */
+.panel{display:none;padding:20px;animation:up 0.2s ease}
+.panel.active{display:block}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.panel-hdr{margin-bottom:20px}
+.panel-title{
+  font-family:'Instrument Serif',serif;
+  font-size:26px;font-style:italic;color:var(--text);
+}
+.panel-sub{font-size:12px;color:var(--textdim);margin-top:3px}
+
+/* ── KPI ROW ── */
+.kpi-row{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;margin-bottom:20px;
+}
+@media(min-width:600px){.kpi-row{grid-template-columns:repeat(4,1fr)}}
+.kpi{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;position:relative;overflow:hidden;
+}
+.kpi::before{
+  content:'';position:absolute;
+  top:0;left:0;width:3px;height:100%;
+  background:var(--accent,var(--copper));
+}
+.kpi-n{
+  font-family:'Instrument Serif',serif;
+  font-size:28px;color:var(--text);line-height:1;
+}
+.kpi-l{font-size:10px;color:var(--textdim);margin-top:5px;
+  text-transform:uppercase;letter-spacing:0.7px;font-weight:500}
+
+/* ── SEARCH/FILTER BAR ── */
+.filter-bar{
+  display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;
+}
+.search-input{
+  flex:1;min-width:180px;
+  padding:10px 14px;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--radius);color:var(--text);
+  font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none;
+}
+.search-input:focus{border-color:var(--copper)}
+.filter-btn{
+  padding:9px 14px;border-radius:var(--radius);
+  background:var(--surface);border:1px solid var(--border2);
+  color:var(--textdim);font-size:12px;font-weight:500;
+  cursor:pointer;transition:all 0.2s;white-space:nowrap;
+  font-family:'Space Grotesk',sans-serif;
+}
+.filter-btn.on{background:var(--copper);border-color:var(--copper);color:#fff}
+
+/* ── CLIENT CARDS ── */
+.cards-grid{
+  display:grid;gap:14px;
+  grid-template-columns:1fr;
+}
+@media(min-width:700px){.cards-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1100px){.cards-grid{grid-template-columns:repeat(3,1fr)}}
+
+.client-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;cursor:pointer;
+  transition:border-color 0.2s,transform 0.2s,box-shadow 0.2s;
+}
+.client-card:hover{
+  border-color:var(--border2);
+  transform:translateY(-2px);
+  box-shadow:0 12px 32px rgba(0,0,0,0.3);
+}
+.card-header{
+  padding:16px 18px 14px;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.card-type-badge{
+  flex-shrink:0;
+  padding:3px 8px;border-radius:6px;
+  font-size:9px;font-weight:700;letter-spacing:0.8px;
+  text-transform:uppercase;
+}
+.type-mine{background:rgba(200,121,65,0.2);color:var(--copper2)}
+.type-service{background:rgba(74,158,191,0.2);color:#6BBDD6}
+.card-id{
+  font-size:10px;font-weight:700;color:var(--textdim);
+  letter-spacing:0.8px;text-transform:uppercase;margin-top:1px;
+}
+.card-name{
+  font-family:'Instrument Serif',serif;
+  font-size:16px;color:var(--text);line-height:1.3;
+}
+.card-company{font-size:11px;color:var(--textdim);margin-top:2px}
+
+.card-body{padding:0 18px 14px}
+.card-meta{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;
+}
+.meta-chip{
+  padding:3px 9px;border-radius:20px;
+  background:var(--panel);border:1px solid var(--border);
+  font-size:10px;color:var(--textdim);
+}
+.card-contacts{border-top:1px solid var(--border);padding-top:10px}
+.contact-row{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 0;
+}
+.av{
+  width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.ct-name{font-size:12px;font-weight:500;color:var(--text)}
+.ct-role{font-size:10px;color:var(--textdim)}
+
+/* Service companies linked to mine */
+.linked-services{
+  margin:8px 0;padding:8px 10px;
+  background:var(--panel);border-radius:8px;
+  border-left:3px solid var(--sky);
+}
+.linked-svc-label{font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:var(--sky);font-weight:700;margin-bottom:5px}
+.linked-svc-item{font-size:11px;color:var(--textdim);margin-bottom:3px}
+
+.card-footer{
+  padding:10px 18px;
+  background:var(--panel);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+  flex-wrap:wrap;
+}
+.stage-pill{
+  padding:3px 10px;border-radius:20px;
+  font-size:10px;font-weight:700;letter-spacing:0.3px;
+}
+.sp-Prospect    {background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.5)}
+.sp-Qualified   {background:rgba(74,158,191,0.2);color:#6BBDD6}
+.sp-Demo        {background:rgba(122,74,158,0.2);color:#AB82D4}
+.sp-Quotation   {background:rgba(212,168,67,0.2);color:#DFB84A}
+.sp-Negotiation {background:rgba(200,121,65,0.2);color:var(--copper2)}
+.sp-Won         {background:rgba(58,140,90,0.2);color:#5DB87A}
+.sp-Lost        {background:rgba(192,74,58,0.2);color:#E0705E}
+
+.urgent-tag{
+  padding:3px 8px;border-radius:20px;
+  background:rgba(192,74,58,0.2);
+  color:#E0705E;font-size:9px;font-weight:700;
+}
+.map-lnk{
+  margin-left:auto;color:var(--sky);
+  font-size:11px;font-weight:500;text-decoration:none;
+}
+.salesperson-tag{
+  margin-left:auto;
+  font-size:10px;color:var(--textdim);font-weight:500;
+}
+
+/* ══════════════════════════════════════════
+   DETAIL DRAWER (slide-up)
+══════════════════════════════════════════ */
+.drawer-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.7);z-index:200;
+  backdrop-filter:blur(4px);
+}
+.drawer-overlay.open{display:flex;align-items:flex-end}
+@media(min-width:700px){.drawer-overlay.open{align-items:center;justify-content:center}}
+
+.drawer{
+  background:var(--surface);
+  width:100%;max-height:90vh;
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  overflow-y:auto;
+  animation:slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@media(min-width:700px){
+  .drawer{
+    max-width:680px;max-height:85vh;
+    border-radius:var(--radius-lg);
+  }
+}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+.drawer-handle{
+  width:36px;height:4px;border-radius:2px;
+  background:var(--border2);margin:14px auto 0;
+}
+.drawer-hdr{
+  padding:20px 22px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:14px;
+}
+.drawer-body{padding:20px 22px}
+
+.section-label{
+  font-size:10px;font-weight:700;color:var(--copper);
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:12px;display:flex;align-items:center;gap-8px;
+}
+.detail-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;margin-bottom:20px;
+}
+.detail-item label{
+  font-size:10px;color:var(--textdim);text-transform:uppercase;
+  letter-spacing:0.6px;font-weight:500;display:block;margin-bottom:3px;
+}
+.detail-item span{font-size:13px;color:var(--text);font-weight:500}
+
+.eq-block{
+  background:var(--panel);border-radius:10px;
+  padding:12px 14px;margin-bottom:8px;
+  border-left:3px solid var(--teal);
+}
+.eq-cat{font-size:11px;font-weight:700;color:var(--teal);margin-bottom:4px}
+.eq-detail{font-size:12px;color:var(--textdim)}
+
+.contact-card{
+  background:var(--panel);border-radius:10px;
+  padding:12px 14px;margin-bottom:8px;
+  display:flex;gap:12px;align-items:center;
+}
+.contact-info .name{font-size:13px;font-weight:600;color:var(--text)}
+.contact-info .role{font-size:11px;color:var(--textdim);margin-top:1px}
+.contact-info .phone{font-size:11px;color:var(--sky);margin-top:3px}
+
+/* ── EDIT/ACTION BUTTONS ── */
+.action-bar{
+  display:flex;gap:10px;padding:16px 22px;
+  border-top:1px solid var(--border);
+  position:sticky;bottom:0;
+  background:var(--surface);
+}
+.btn{
+  padding:10px 18px;border-radius:var(--radius);
+  font-family:'Space Grotesk',sans-serif;
+  font-size:13px;font-weight:600;cursor:pointer;
+  transition:all 0.2s;border:none;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--copper),var(--copper2));
+  color:#fff;flex:1;
+  box-shadow:0 4px 12px rgba(200,121,65,0.25);
+}
+.btn-primary:hover{box-shadow:0 6px 18px rgba(200,121,65,0.4)}
+.btn-ghost{
+  background:var(--panel);border:1px solid var(--border2);
+  color:var(--textdim);
+}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+.btn-danger{background:rgba(192,74,58,0.15);border:1px solid rgba(192,74,58,0.3);color:var(--red)}
+.btn-danger:hover{background:rgba(192,74,58,0.25)}
+
+/* ══════════════════════════════════════════
+   WIZARD (Add/Edit)
+══════════════════════════════════════════ */
+.wizard-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.75);z-index:300;
+  align-items:center;justify-content:center;padding:16px;
+  overflow-y:auto;
+}
+.wizard-overlay.open{display:flex}
+.wizard-box{
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:var(--radius-lg);
+  width:100%;max-width:600px;
+  animation:slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  max-height:90vh;overflow-y:auto;
+}
+.wiz-hdr{
+  padding:22px 24px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:14px;
+}
+.wiz-hdr-title{font-family:'Instrument Serif',serif;font-size:20px;font-style:italic}
+.wiz-close{
+  margin-left:auto;background:none;border:none;
+  color:var(--textdim);cursor:pointer;font-size:20px;
+  line-height:1;padding:4px;
+}
+.wiz-close:hover{color:var(--text)}
+
+/* Step progress */
+.wiz-steps{
+  display:flex;padding:16px 24px;gap:0;
+  border-bottom:1px solid var(--border);
+}
+.wiz-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative}
+.wiz-step:not(:last-child)::after{
+  content:'';position:absolute;
+  top:12px;left:calc(50% + 12px);
+  width:calc(100% - 24px);height:1px;
+  background:var(--border2);z-index:0;
+  transition:background 0.3s;
+}
+.wiz-step.done:not(:last-child)::after{background:var(--teal)}
+.ws-circle{
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
+  background:var(--panel);color:var(--textdim);
+  border:1.5px solid var(--border2);transition:all 0.3s;z-index:1;
+}
+.wiz-step.active .ws-circle{background:var(--copper);border-color:var(--copper);color:#fff;box-shadow:0 0 0 3px rgba(200,121,65,0.2)}
+.wiz-step.done .ws-circle{background:var(--teal);border-color:var(--teal);color:#fff}
+.ws-label{font-size:9px;color:var(--textdim);text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.wiz-step.active .ws-label{color:var(--copper)}
+.wiz-step.done .ws-label{color:var(--teal)}
+
+/* Wizard sections */
+.wiz-body{padding:24px}
+.wiz-section{display:none}
+.wiz-section.active{display:block;animation:up 0.2s ease}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-row.single{grid-template-columns:1fr}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:500px){.form-row,.form-row.three{grid-template-columns:1fr}}
+
+.fg{display:flex;flex-direction:column;gap:6px}
+.fg label{font-size:10px;font-weight:600;color:var(--textdim);text-transform:uppercase;letter-spacing:0.7px}
+.fg label .req{color:var(--red)}
+.fg input,.fg select,.fg textarea{
+  padding:10px 13px;
+  background:var(--panel);border:1.5px solid var(--border2);
+  border-radius:var(--radius);color:var(--text);
+  font-family:'Space Grotesk',sans-serif;font-size:13px;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;
+}
+.fg input:focus,.fg select,.fg textarea:focus{border-color:var(--copper);box-shadow:0 0 0 3px rgba(200,121,65,0.1)}
+.fg select{cursor:pointer}
+.fg select option{background:var(--panel)}
+.fg textarea{resize:vertical;min-height:76px}
+
+/* Contact blocks in wizard */
+.wiz-contact-block{
+  background:var(--panel);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:16px;
+  margin-bottom:12px;position:relative;
+}
+.wiz-contact-label{
+  font-size:10px;font-weight:700;color:var(--copper);
+  text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;
+}
+.btn-remove{
+  position:absolute;top:12px;right:12px;
+  background:none;border:none;cursor:pointer;
+  color:var(--textdim);font-size:16px;
+  padding:2px 6px;border-radius:6px;
+  transition:all 0.2s;
+}
+.btn-remove:hover{background:rgba(192,74,58,0.2);color:var(--red)}
+.btn-add-block{
+  width:100%;padding:10px;
+  background:none;border:1.5px dashed var(--border2);
+  border-radius:var(--radius);color:var(--sky);
+  font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all 0.2s;margin-bottom:14px;
+}
+.btn-add-block:hover{border-color:var(--sky);background:rgba(74,158,191,0.05)}
+
+/* Equipment category pills */
+.eq-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.eq-pill{
+  padding:7px 13px;border-radius:20px;
+  background:var(--panel);border:1.5px solid var(--border2);
+  font-size:11px;font-weight:500;color:var(--textdim);
+  cursor:pointer;transition:all 0.2s;user-select:none;
+}
+.eq-pill.on{background:rgba(42,140,122,0.2);border-color:var(--teal);color:#5ECEB8}
+
+/* Service links in wizard */
+.mine-link-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-radius:8px;
+  background:var(--panel);margin-bottom:6px;
+}
+.mine-link-item label{flex:1;font-size:12px;color:var(--text);cursor:pointer}
+.mine-link-item input[type=checkbox]{
+  width:16px;height:16px;accent-color:var(--copper);cursor:pointer;
+}
+
+/* Wizard footer */
+.wiz-footer{
+  padding:16px 24px;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface);
+  position:sticky;bottom:0;
+}
+.wiz-step-count{margin-left:auto;font-size:11px;color:var(--textdim)}
+
+/* ══════════════════════════════════════════
+   PIPELINE PANEL
+══════════════════════════════════════════ */
+.pipeline-cols{
+  display:flex;gap:12px;overflow-x:auto;
+  padding-bottom:8px;
+}
+.pip-col{
+  flex:0 0 240px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;
+}
+.pip-col-hdr{
+  padding:10px 14px;
+  display:flex;align-items:center;gap:8px;
+  border-bottom:1px solid var(--border);
+}
+.pip-col-dot{width:8px;height:8px;border-radius:50%}
+.pip-col-name{font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px}
+.pip-col-count{
+  margin-left:auto;
+  background:var(--panel);border-radius:10px;
+  padding:2px 7px;font-size:10px;color:var(--textdim);font-weight:700;
+}
+.pip-col-body{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+.pip-mini-card{
+  background:var(--panel);border:1px solid var(--border2);
+  border-radius:8px;padding:10px 12px;cursor:pointer;
+  transition:border-color 0.15s;
+}
+.pip-mini-card:hover{border-color:var(--copper)}
+.pip-mini-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px}
+.pip-mini-meta{font-size:10px;color:var(--textdim)}
+.pip-mini-budget{
+  margin-top:5px;font-size:11px;color:var(--gold);font-weight:600;
+}
+
+/* ══════════════════════════════════════════
+   MAP PANEL
+══════════════════════════════════════════ */
+.map-wrap{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;
+  height:520px;position:relative;
+}
+.map-tip{
+  position:absolute;
+  background:var(--deep);border:1px solid var(--border2);
+  border-radius:12px;padding:14px 16px;min-width:210px;
+  pointer-events:none;opacity:0;transition:opacity 0.15s;
+  z-index:10;box-shadow:0 12px 32px rgba(0,0,0,0.5);
+}
+.map-tip.show{opacity:1}
+.mt-name{font-family:'Instrument Serif',serif;font-size:14px;color:var(--text);font-style:italic}
+.mt-co{font-size:10px;color:var(--textdim);margin-bottom:8px}
+.mt-row{font-size:11px;color:var(--textdim);margin-bottom:3px}
+.mt-row strong{color:var(--text)}
+.mt-link{
+  display:block;margin-top:10px;text-align:center;
+  padding:6px;background:rgba(74,158,191,0.15);
+  border-radius:7px;color:var(--sky);font-size:11px;
+  font-weight:600;text-decoration:none;
+}
+.mt-link:hover{background:rgba(74,158,191,0.25)}
+
+/* ══════════════════════════════════════════
+   ADMIN PANEL
+══════════════════════════════════════════ */
+.admin-grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:700px){.admin-grid{grid-template-columns:1fr 1fr}}
+
+.admin-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;
+}
+.admin-card-hdr{
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  font-size:11px;font-weight:700;color:var(--copper);
+  text-transform:uppercase;letter-spacing:0.8px;
+}
+.admin-card-body{padding:16px 18px}
+
+.sp-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.sp-row:last-child{border-bottom:none}
+.sp-av{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:13px;color:#fff;flex-shrink:0;
+}
+.sp-name{font-size:13px;font-weight:600;color:var(--text)}
+.sp-stats{font-size:10px;color:var(--textdim);margin-top:2px}
+.sp-pipeline-bar{
+  height:4px;background:var(--panel);border-radius:2px;
+  margin-top:6px;overflow:hidden;
+}
+.sp-pipeline-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--copper),var(--gold))}
+
+/* User management */
+.user-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.user-row:last-child{border-bottom:none}
+.user-email{font-size:12px;color:var(--text)}
+.user-role{
+  padding:2px 8px;border-radius:10px;
+  font-size:9px;font-weight:700;text-transform:uppercase;
+}
+.role-admin{background:rgba(200,121,65,0.2);color:var(--copper2)}
+.role-sales{background:rgba(74,158,191,0.2);color:#6BBDD6}
+.btn-sm{
+  padding:5px 10px;border-radius:6px;font-size:10px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border2);background:var(--panel);
+  color:var(--textdim);font-family:'Space Grotesk',sans-serif;
+  transition:all 0.2s;
+}
+.btn-sm:hover{color:var(--text);border-color:var(--border2)}
+
+/* Export button */
+.btn-export{
+  padding:10px 20px;border-radius:var(--radius);
+  background:rgba(58,140,90,0.15);border:1px solid rgba(58,140,90,0.3);
+  color:#5DB87A;font-family:'Space Grotesk',sans-serif;
+  font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;
+}
+.btn-export:hover{background:rgba(58,140,90,0.25)}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--raised);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:10px 20px;
+  font-size:13px;font-weight:500;color:var(--text);
+  z-index:500;opacity:0;transition:all 0.3s;pointer-events:none;
+  white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Offline banner */
+.offline-banner{
+  display:none;
+  background:rgba(200,121,65,0.15);border-bottom:1px solid rgba(200,121,65,0.3);
+  padding:7px 20px;text-align:center;
+  font-size:11px;color:var(--copper2);font-weight:500;
+}
+.offline-banner.show{display:block}
+
+/* Loading spinner */
+.spinner{
+  display:flex;align-items:center;justify-content:center;
+  padding:40px;
+}
+.spin{
+  width:32px;height:32px;border-radius:50%;
+  border:3px solid var(--border2);border-top-color:var(--copper);
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Empty state */
+.empty{
+  text-align:center;padding:48px 20px;color:var(--textdim);
+}
+.empty-ico{font-size:40px;margin-bottom:12px;opacity:0.4}
+.empty p{font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- OFFLINE BANNER -->
+<div class="offline-banner" id="offline-banner">
+  ⚡ You're offline — changes saved locally and will sync when reconnected
+</div>
+
+<!-- ══════════════════════════════════════════
+     AUTH SCREEN
+══════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-mark">G</div>
+      <div class="auth-title">GMX Field Intelligence</div>
+      <div class="auth-sub">GMX Systems Zambia Ltd · Mining Database</div>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <div style="text-align:center;margin-bottom:20px">
+      <p style="font-size:12px;color:var(--textdim);line-height:1.6">
+        Sign in with your Google account.<br>
+        Access is restricted to authorised GMX team members only.
+      </p>
+    </div>
+    <button class="btn-google" id="btn-login" onclick="doLogin()">
+      <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        <path fill="none" d="M0 0h48v48H0z"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <p style="text-align:center;font-size:11px;color:var(--textdim);margin-top:20px">
+      🔒 Only pre-approved Google accounts can access this app
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     APP
+══════════════════════════════════════════ -->
+<div id="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="topbar-mark">G</div>
+      <div class="topbar-name">GMX Intelligence</div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-dot"></div>
+        <span id="user-label">—</span>
+      </div>
+      <button class="btn-signout" onclick="doSignOut()">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panel active" id="panel-clients">
+    <div class="panel-hdr">
+      <div class="panel-title">Client Database</div>
+      <div class="panel-sub">Mines &amp; Service Companies · Zambia</div>
+    </div>
+    <div class="kpi-row" id="home-kpis"></div>
+    <div class="filter-bar">
+      <input class="search-input" id="search" placeholder="🔍  Search mine, company, contact…" oninput="renderClients()">
+      <button class="filter-btn" id="f-all"  onclick="setFilter('all')"  >All</button>
+      <button class="filter-btn" id="f-mine" onclick="setFilter('mine')" >Mines</button>
+      <button class="filter-btn" id="f-svc"  onclick="setFilter('svc')"  >Service Co.</button>
+      <button class="filter-btn" id="f-urgent" onclick="setFilter('urgent')">🚨 Urgent</button>
+    </div>
+    <div class="cards-grid" id="cards-container">
+      <div class="spinner"><div class="spin"></div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-pipeline">
+    <div class="panel-hdr">
+      <div class="panel-title">Sales Pipeline</div>
+      <div class="panel-sub">Prospect → Qualified → Demo → Quotation → Negotiation → Closed</div>
+    </div>
+    <div class="pipeline-cols" id="pipeline-cols"></div>
+  </div>
+
+  <div class="panel" id="panel-map">
+    <div class="panel-hdr">
+      <div class="panel-title">Mine Locations</div>
+      <div class="panel-sub">Hover a pin to preview · click 📍 to open Google Maps</div>
+    </div>
+    <div class="map-wrap" id="map-wrap">
+      <div class="map-tip" id="map-tip"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-admin" style="display:none">
+    <div class="panel-hdr">
+      <div class="panel-title">Admin</div>
+      <div class="panel-sub">Salesperson performance · User management · Export</div>
+    </div>
+    <div class="admin-grid" id="admin-content"></div>
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button class="bnav-btn active" id="bnav-clients" onclick="switchPanel('clients')">
+      <span class="ico">🏭</span>Clients
+    </button>
+    <button class="bnav-btn" id="bnav-pipeline" onclick="switchPanel('pipeline')">
+      <span class="ico">📊</span>Pipeline
+    </button>
+    <button class="bnav-btn" id="bnav-map" onclick="switchPanel('map')">
+      <span class="ico">🗺️</span>Map
+    </button>
+    <button class="bnav-btn" id="bnav-add" onclick="openWizard()">
+      <span class="ico">＋</span>Add
+    </button>
+    <button class="bnav-btn" id="bnav-admin" style="display:none" onclick="switchPanel('admin')">
+      <span class="ico">⚙️</span>Admin
+    </button>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CLIENT DETAIL DRAWER
+══════════════════════════════════════════ -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer(event)">
+  <div class="drawer" id="drawer">
+    <div class="drawer-handle"></div>
+    <div id="drawer-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     WIZARD OVERLAY
+══════════════════════════════════════════ -->
+<div class="wizard-overlay" id="wiz-overlay">
+  <div class="wizard-box">
+    <div class="wiz-hdr">
+      <div class="wiz-hdr-title" id="wiz-title">Add New Client</div>
+      <button class="wiz-close" onclick="closeWizard()">✕</button>
+    </div>
+
+    <!-- Type selector -->
+    <div id="wiz-type-row" style="padding:14px 24px;border-bottom:1px solid var(--border);display:flex;gap:10px">
+      <button class="filter-btn on" id="wt-mine" onclick="setWizType('mine')">⛏️ Mine</button>
+      <button class="filter-btn" id="wt-svc" onclick="setWizType('svc')">🔧 Service Company</button>
+    </div>
+
+    <!-- Steps -->
+    <div class="wiz-steps" id="wiz-steps"></div>
+
+    <!-- Body -->
+    <div class="wiz-body" id="wiz-body"></div>
+
+    <!-- Footer -->
+    <div class="wiz-footer">
+      <button class="btn btn-ghost" id="wbtn-back" onclick="wizBack()" style="display:none">← Back</button>
+      <button class="btn btn-primary" id="wbtn-next" onclick="wizNext()">Next →</button>
+      <span class="wiz-step-count" id="wiz-step-count"></span>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     FIREBASE SDK
+══════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
+  getDocs, onSnapshot, query, orderBy, serverTimestamp, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { enableIndexedDbPersistence }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ══════════════════════════════════════════════════
+// 🔧 PASTE YOUR FIREBASE CONFIG HERE
+// (From Firebase Console → Project Settings → Your apps → SDK snippet)
+// ══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyCXgF0q_0xeC8bglT0KbUp2Y3YLRxPt83I",
+  authDomain:        "gmx-zambia.firebaseapp.com",
+  projectId:         "gmx-zambia",
+  storageBucket:     "gmx-zambia.firebasestorage.app",
+  messagingSenderId: "562863827071",
+  appId:             "1:562863827071:web:43bbe30b015e4cc981374a"
+};
+// ══════════════════════════════════════════════════
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// Offline persistence
+enableIndexedDbPersistence(db).catch(()=>{});
+
+// ── STATE ──
+let currentUser = null;
+let currentRole = 'sales'; // 'admin' | 'sales'
+let clients = [];          // all loaded clients
+let activeFilter = 'all';
+let wizardStep = 1;
+let wizardType = 'mine';
+let wizardData = {};
+let editingId   = null;
+let contactCount = 0;
+let eqCount = 0;
+
+const STAGES = ['Prospect','Qualified','Demo','Quotation','Negotiation','Closed – Won','Closed – Lost'];
+const PROVINCES = ['Central','Copperbelt','Eastern','Luapula','Lusaka','Muchinga','Northern','North-Western','Southern','Western'];
+const EQ_CATS = ['GNSS / Total Stations','Laser Scanner / Reality Capture','UAV / Drone','Machine Control','Deformation Monitoring','Survey Software','Processing Software'];
+const SP_COLORS = {Marcel:'#C87941',Kelvin:'#4A9EBF',Castrol:'#3A8C5A'};
+const STAGE_DOTS = {
+  'Prospect':'#6B7280','Qualified':'#4A9EBF','Demo':'#7A4A9E',
+  'Quotation':'#D4A843','Negotiation':'#C87941','Closed – Won':'#3A8C5A','Closed – Lost':'#C0392B'
+};
+
+// ── UTILS ──
+function toast(msg, dur=2500){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+function initials(name){
+  return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+function stageClass(s){
+  if(!s) return '';
+  if(s.includes('Won')) return 'sp-Won';
+  if(s.includes('Lost')) return 'sp-Lost';
+  return 'sp-'+s.replace(/[\s–-]/g,'');
+}
+function canEdit(client){
+  if(currentRole==='admin') return true;
+  return client.assignedTo === currentUser?.displayName ||
+         client.createdBy  === currentUser?.uid;
+}
+
+// ── AUTH ──
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+window.doLogin = async function(){
+  const errEl = document.getElementById('auth-error');
+  const btn   = document.getElementById('btn-login');
+  errEl.style.display='none';
+  btn.disabled=true; btn.innerHTML='<div class="spin" style="width:18px;height:18px;margin:0 auto"></div>';
+  try {
+    await signInWithPopup(auth, googleProvider);
+    // onAuthStateChanged handles the rest
+  } catch(e){
+    let msg = 'Sign-in failed. Please try again.';
+    if(e.code === 'auth/popup-closed-by-user') msg = 'Sign-in window was closed. Please try again.';
+    if(e.code === 'auth/popup-blocked')        msg = 'Pop-up was blocked by your browser. Please allow pop-ups for this site.';
+    if(e.code === 'auth/cancelled-popup-request') return; // silent — user just reopened
+    errEl.textContent = msg;
+    errEl.style.display='block';
+    btn.disabled=false;
+    btn.innerHTML=`<svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Sign in with Google`;
+  }
+};
+
+window.doSignOut = async function(){
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, async user => {
+  if(user){
+    currentUser = user;
+    // Fetch role from Firestore users collection
+    const snap = await getDoc(doc(db,'users', user.uid));
+
+    // ── WHITELIST CHECK ──
+    // User authenticated with Google but has no Firestore doc yet.
+    // Show them a "pending access" screen with their UID so admin can add them.
+    // Sign out AFTER showing the screen (so Firebase has already registered them
+    // in Authentication → Users where admin can find their UID).
+    if(!snap.exists()){
+      // Show the pending-access screen before signing out
+      document.getElementById('auth-screen').style.display='none';
+      document.getElementById('app').style.display='none';
+      showPendingScreen(user);
+      // Now sign out — Firebase has already recorded them in Authentication
+      await signOut(auth);
+      return;
+    }
+
+    currentRole = snap.data().role || 'sales';
+    document.getElementById('user-label').textContent =
+      user.displayName || snap.data().name || user.email;
+
+    // Show admin tab if admin
+    if(currentRole==='admin'){
+      document.getElementById('panel-admin').style.removeProperty('display');
+      document.getElementById('bnav-admin').style.removeProperty('display');
+    }
+
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    subscribeClients();
+    renderAdminPanel();
+  } else {
+    currentUser=null;
+    // Only show auth screen if pending screen isn't already visible
+    if(!document.getElementById('pending-screen')){
+      document.getElementById('auth-screen').style.display='flex';
+    }
+    document.getElementById('app').style.display='none';
+  }
+});
+
+// ── PENDING ACCESS SCREEN ──
+function showPendingScreen(user){
+  // Remove any existing pending screen
+  document.getElementById('pending-screen')?.remove();
+
+  const div = document.createElement('div');
+  div.id = 'pending-screen';
+  div.style.cssText = `
+    position:fixed;inset:0;background:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    z-index:999;padding:20px;
+  `;
+  div.innerHTML = `
+    <div style="
+      background:var(--surface);border:1px solid var(--border2);
+      border-radius:18px;padding:40px 36px;max-width:460px;width:100%;
+      box-shadow:0 40px 80px rgba(0,0,0,0.5);text-align:center;
+    ">
+      <div style="font-size:40px;margin-bottom:16px">⏳</div>
+      <div style="font-family:'Instrument Serif',serif;font-size:22px;font-style:italic;color:var(--text);margin-bottom:8px">
+        Access Pending
+      </div>
+      <p style="font-size:13px;color:var(--textdim);line-height:1.6;margin-bottom:24px">
+        Your Google account <strong style="color:var(--text)">${user.email}</strong>
+        has been registered but is not yet authorised.<br><br>
+        Send your administrator the details below so they can grant you access.
+      </p>
+
+      <div style="background:var(--panel);border-radius:12px;padding:16px;margin-bottom:20px;text-align:left">
+        <div style="font-size:10px;font-weight:700;color:var(--copper);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">
+          📋 Your Account Details (send these to your admin)
+        </div>
+        <div style="font-size:11px;color:var(--textdim);margin-bottom:4px">Google Account</div>
+        <div style="font-size:13px;color:var(--text);font-weight:500;margin-bottom:12px">${user.email}</div>
+        <div style="font-size:11px;color:var(--textdim);margin-bottom:4px">Your UID (needed by admin)</div>
+        <div style="
+          font-size:11px;color:var(--sky);font-family:monospace;
+          background:var(--raised);border-radius:8px;padding:8px 10px;
+          word-break:break-all;cursor:pointer;border:1px solid var(--border2);
+        " onclick="copyUID('${user.uid}', this)" title="Click to copy">
+          ${user.uid}
+        </div>
+        <div style="font-size:10px;color:var(--textdim);margin-top:5px">👆 Click the UID to copy it</div>
+      </div>
+
+      <div style="background:rgba(200,121,65,0.1);border:1px solid rgba(200,121,65,0.2);border-radius:10px;padding:14px;margin-bottom:20px;text-align:left">
+        <div style="font-size:10px;font-weight:700;color:var(--copper);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">
+          ⚙️ Admin: how to grant access
+        </div>
+        <div style="font-size:11px;color:var(--textdim);line-height:1.7">
+          1. Firebase Console → Firestore → <code style="background:var(--raised);padding:1px 5px;border-radius:4px">users</code> collection<br>
+          2. Add document — Document ID = the UID above<br>
+          3. Fields: <code style="background:var(--raised);padding:1px 5px;border-radius:4px">name</code> (string), <code style="background:var(--raised);padding:1px 5px;border-radius:4px">role</code>: "sales" or "admin", <code style="background:var(--raised);padding:1px 5px;border-radius:4px">email</code> (string)
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('pending-screen').remove(); document.getElementById('auth-screen').style.display='flex';"
+        style="
+          padding:11px 24px;border-radius:10px;
+          background:var(--panel);border:1px solid var(--border2);
+          color:var(--textdim);font-family:'Space Grotesk',sans-serif;
+          font-size:13px;font-weight:600;cursor:pointer;
+        ">
+        ← Back to Sign In
+      </button>
+    </div>
+  `;
+  document.body.appendChild(div);
+}
+
+window.copyUID = function(uid, el){
+  navigator.clipboard.writeText(uid).then(()=>{
+    const orig = el.style.color;
+    el.style.color = 'var(--teal)';
+    el.textContent = '✅ Copied to clipboard!';
+    setTimeout(()=>{ el.style.color=orig; el.textContent=uid; }, 2000);
+  });
+};
+
+// ── ONLINE/OFFLINE ──
+window.addEventListener('online',  ()=>document.getElementById('offline-banner').classList.remove('show'));
+window.addEventListener('offline', ()=>document.getElementById('offline-banner').classList.add('show'));
+
+// ── FIRESTORE SUBSCRIPTION ──
+function subscribeClients(){
+  const q = query(collection(db,'clients'), orderBy('createdAt','asc'));
+  onSnapshot(q, snap => {
+    clients = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderAll();
+  });
+}
+
+function renderAll(){
+  renderKPIs();
+  renderClients();
+  renderPipeline();
+  renderMap();
+  if(currentRole==='admin') renderAdminPanel();
+}
+
+// ── KPIs ──
+function renderKPIs(){
+  const mines   = clients.filter(c=>c.type==='mine');
+  const svcs    = clients.filter(c=>c.type==='service');
+  const urgent  = clients.filter(c=>c.procurementNeed==='Yes – Immediate');
+  const total$  = clients.reduce((s,c)=>s+(Number(c.budget)||0),0);
+  document.getElementById('home-kpis').innerHTML = `
+    <div class="kpi" style="--accent:var(--copper)">
+      <div class="kpi-n">${mines.length}</div>
+      <div class="kpi-l">Mines Mapped</div>
+    </div>
+    <div class="kpi" style="--accent:var(--sky)">
+      <div class="kpi-n">${svcs.length}</div>
+      <div class="kpi-l">Service Companies</div>
+    </div>
+    <div class="kpi" style="--accent:var(--red)">
+      <div class="kpi-n">${urgent.length}</div>
+      <div class="kpi-l">Urgent Needs</div>
+    </div>
+    <div class="kpi" style="--accent:var(--gold)">
+      <div class="kpi-n">$${(total$/1000).toFixed(0)}K</div>
+      <div class="kpi-l">Pipeline Value</div>
+    </div>`;
+}
+
+// ── CLIENT CARDS ──
+window.setFilter = function(f){
+  activeFilter=f;
+  ['all','mine','svc','urgent'].forEach(k=>{
+    document.getElementById('f-'+k)?.classList.toggle('on', k===f);
+  });
+  renderClients();
+};
+setFilter('all');
+
+function renderClients(){
+  const q  = (document.getElementById('search')?.value||'').toLowerCase();
+  let list = clients;
+  if(activeFilter==='mine')   list=list.filter(c=>c.type==='mine');
+  if(activeFilter==='svc')    list=list.filter(c=>c.type==='service');
+  if(activeFilter==='urgent') list=list.filter(c=>c.procurementNeed==='Yes – Immediate');
+  if(q) list=list.filter(c=>
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.company||'').toLowerCase().includes(q) ||
+    (c.contacts||[]).some(ct=>(ct.name||'').toLowerCase().includes(q))
+  );
+
+  if(!list.length){
+    document.getElementById('cards-container').innerHTML =
+      `<div class="empty"><div class="empty-ico">🔍</div><p>No clients match your search.</p></div>`;
+    return;
+  }
+
+  document.getElementById('cards-container').innerHTML = list.map(c => {
+    const isEditable = canEdit(c);
+    // Linked services for mines
+    const linkedSvcs = c.type==='mine'
+      ? clients.filter(s=>s.type==='service' && (s.linkedMines||[]).includes(c.id))
+      : [];
+    // Linked mines for service companies
+    const linkedMines = c.type==='service'
+      ? clients.filter(m=>m.type==='mine' && (c.linkedMines||[]).includes(m.id))
+      : [];
+
+    const contacts = (c.contacts||[]).slice(0,3);
+    const mapsUrl = c.coords ? `https://www.google.com/maps?q=${encodeURIComponent(c.coords)}` : '';
+
+    return `
+    <div class="client-card" onclick="openDrawer('${c.id}')">
+      <div class="card-header">
+        <div>
+          <div class="card-type-badge ${c.type==='mine'?'type-mine':'type-service'}">${c.type==='mine'?'⛏️ Mine':'🔧 Service'}</div>
+          <div class="card-id">${c.clientId||''}</div>
+        </div>
+        <div style="flex:1">
+          <div class="card-name">${c.name||'Unnamed'}</div>
+          <div class="card-company">${c.company||''}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-meta">
+          ${c.province?`<span class="meta-chip">📍 ${c.province}</span>`:''}
+          ${c.commodity?`<span class="meta-chip">⛏️ ${c.commodity}</span>`:''}
+          ${c.method?`<span class="meta-chip">${c.method}</span>`:''}
+        </div>
+        ${linkedSvcs.length ? `
+          <div class="linked-services">
+            <div class="linked-svc-label">🔧 Service companies on site</div>
+            ${linkedSvcs.map(s=>`<div class="linked-svc-item">• ${s.name} <span style="color:var(--textdim);font-size:10px">${s.company||''}</span></div>`).join('')}
+          </div>` : ''}
+        ${linkedMines.length ? `
+          <div class="linked-services" style="border-left-color:var(--copper)">
+            <div class="linked-svc-label" style="color:var(--copper2)">⛏️ Operates at mines</div>
+            ${linkedMines.map(m=>`<div class="linked-svc-item">• ${m.name}</div>`).join('')}
+          </div>` : ''}
+        <div class="card-contacts">
+          ${contacts.map(ct=>`
+            <div class="contact-row">
+              <div class="av" style="background:${SP_COLORS[c.assignedTo]||'#6B7280'}">${initials(ct.name)}</div>
+              <div>
+                <div class="ct-name">${ct.name}</div>
+                <div class="ct-role">${ct.role||''} ${ct.dept?'· '+ct.dept:''}</div>
+              </div>
+            </div>`).join('')}
+          ${(c.contacts||[]).length>3?`<div style="font-size:10px;color:var(--textdim);padding:4px 0">+${(c.contacts||[]).length-3} more contacts</div>`:''}
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="stage-pill ${stageClass(c.stage)}">${c.stage||'—'}</span>
+        ${c.procurementNeed==='Yes – Immediate'?'<span class="urgent-tag">🚨 Urgent</span>':''}
+        ${mapsUrl && c.type==='mine'?`<a href="${mapsUrl}" target="_blank" class="map-lnk" onclick="event.stopPropagation()">📍 Maps</a>`:''}
+        <span class="salesperson-tag">${c.assignedTo||''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── DRAWER ──
+window.openDrawer = function(id){
+  const c = clients.find(x=>x.id===id);
+  if(!c) return;
+  const editable = canEdit(c);
+  const mapsUrl  = c.coords ? `https://www.google.com/maps?q=${encodeURIComponent(c.coords)}` : '';
+  const linkedSvcs  = c.type==='mine' ? clients.filter(s=>s.type==='service'&&(s.linkedMines||[]).includes(c.id)) : [];
+  const linkedMines = c.type==='service' ? clients.filter(m=>m.type==='mine'&&(c.linkedMines||[]).includes(m.id)) : [];
+
+  document.getElementById('drawer-content').innerHTML = `
+    <div class="drawer-hdr">
+      <div>
+        <div class="card-type-badge ${c.type==='mine'?'type-mine':'type-service'}" style="margin-bottom:6px">${c.type==='mine'?'⛏️ Mine':'🔧 Service Company'}</div>
+        <div style="font-family:'Instrument Serif',serif;font-size:20px;font-style:italic;color:var(--text)">${c.name||'Unnamed'}</div>
+        <div style="font-size:12px;color:var(--textdim);margin-top:2px">${c.company||''} ${c.clientId?'· '+c.clientId:''}</div>
+      </div>
+      <span class="stage-pill ${stageClass(c.stage)}" style="margin-left:auto;align-self:flex-start">${c.stage||'—'}</span>
+    </div>
+    <div class="drawer-body">
+
+      <div class="section-label" style="margin-bottom:10px">📍 Location & Operation</div>
+      <div class="detail-grid">
+        <div class="detail-item"><label>Province</label><span>${c.province||'—'}</span></div>
+        <div class="detail-item"><label>District</label><span>${c.district||'—'}</span></div>
+        <div class="detail-item"><label>GPS</label><span>${c.coords||'—'}</span></div>
+        <div class="detail-item"><label>Commodity</label><span>${c.commodity||'—'}</span></div>
+        <div class="detail-item"><label>Method</label><span>${c.method||'—'}</span></div>
+        <div class="detail-item"><label>Operation Type</label><span>${c.opType||'—'}</span></div>
+      </div>
+
+      <div class="section-label" style="margin-bottom:10px">👤 Contacts</div>
+      ${(c.contacts||[]).map(ct=>`
+        <div class="contact-card">
+          <div class="av" style="background:${SP_COLORS[c.assignedTo]||'#6B7280'};width:40px;height:40px;font-size:13px">${initials(ct.name)}</div>
+          <div class="contact-info">
+            <div class="name">${ct.name}</div>
+            <div class="role">${ct.role||''} ${ct.dept?'· '+ct.dept:''}</div>
+            ${ct.phone?`<div class="phone"><a href="tel:${ct.phone}" style="color:var(--sky);text-decoration:none">${ct.phone}</a></div>`:''}
+            ${ct.email?`<div style="font-size:11px;color:var(--textdim)">${ct.email}</div>`:''}
+          </div>
+        </div>`).join('')||'<p style="font-size:12px;color:var(--textdim)">No contacts added.</p>'}
+
+      ${(c.equipment||[]).length?`
+        <div class="section-label" style="margin-bottom:10px;margin-top:16px">🛠️ Equipment</div>
+        ${(c.equipment||[]).map(eq=>`
+          <div class="eq-block">
+            <div class="eq-cat">${eq.category}</div>
+            <div class="eq-detail">${[eq.brand,eq.model,eq.software].filter(Boolean).join(' · ')||'Details not entered'}</div>
+          </div>`).join('')}`:''}
+
+      ${linkedSvcs.length?`
+        <div class="section-label" style="margin-bottom:10px;margin-top:16px">🔧 Service Companies on Site</div>
+        ${linkedSvcs.map(s=>`
+          <div style="padding:8px 12px;background:var(--panel);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--sky)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${s.name}</div>
+            <div style="font-size:11px;color:var(--textdim)">${s.company||''} · ${s.stage||''}</div>
+          </div>`).join('')}`:''}
+
+      ${linkedMines.length?`
+        <div class="section-label" style="margin-bottom:10px;margin-top:16px">⛏️ Operates at Mines</div>
+        ${linkedMines.map(m=>`
+          <div style="padding:8px 12px;background:var(--panel);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--copper)">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${m.name}</div>
+            <div style="font-size:11px;color:var(--textdim)">${m.company||''} · ${m.province||''}</div>
+          </div>`).join('')}`:''}
+
+      <div class="section-label" style="margin-bottom:10px;margin-top:16px">💰 Procurement & Sales</div>
+      <div class="detail-grid">
+        <div class="detail-item"><label>Procurement Need</label><span style="${c.procurementNeed==='Yes – Immediate'?'color:var(--red)':''}">${c.procurementNeed||'—'}</span></div>
+        <div class="detail-item"><label>Budget (USD)</label><span>${c.budget?'$'+Number(c.budget).toLocaleString():'—'}</span></div>
+        <div class="detail-item"><label>Target Quarter</label><span>${c.targetQuarter||'—'}</span></div>
+        <div class="detail-item"><label>Assigned To</label><span style="color:${SP_COLORS[c.assignedTo]||'var(--text)'};font-weight:600">${c.assignedTo||'—'}</span></div>
+      </div>
+
+      ${c.issues?`<div style="background:rgba(192,74,58,0.1);border:1px solid rgba(192,74,58,0.2);border-radius:8px;padding:12px;margin-top:8px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--red);font-weight:700;margin-bottom:5px">⚠️ Issues / Pain Points</div><div style="font-size:12px;color:var(--text)">${c.issues}</div></div>`:''}
+      ${c.notes?`<div style="background:var(--panel);border-radius:8px;padding:12px;margin-top:8px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--textdim);font-weight:700;margin-bottom:5px">📝 Notes</div><div style="font-size:12px;color:var(--textdim)">${c.notes}</div></div>`:''}
+
+      ${mapsUrl?`<a href="${mapsUrl}" target="_blank" style="display:block;text-align:center;padding:10px;background:rgba(74,158,191,0.1);border:1px solid rgba(74,158,191,0.2);border-radius:var(--radius);color:var(--sky);font-weight:600;font-size:13px;text-decoration:none;margin-top:16px">📍 Open in Google Maps</a>`:''}
+    </div>
+    <div class="action-bar">
+      ${editable?`<button class="btn btn-primary" onclick="openWizard('${c.id}')">✏️ Edit</button>`:''}
+      ${editable && currentRole==='admin'?`<button class="btn btn-danger" onclick="deleteClient('${c.id}')">Delete</button>`:''}
+      <button class="btn btn-ghost" onclick="closeDrawer()">Close</button>
+    </div>`;
+
+  document.getElementById('drawer-overlay').classList.add('open');
+};
+
+window.closeDrawer = function(e){
+  if(e && e.target !== document.getElementById('drawer-overlay')) return;
+  document.getElementById('drawer-overlay').classList.remove('open');
+};
+
+// ── PIPELINE ──
+function renderPipeline(){
+  document.getElementById('pipeline-cols').innerHTML = STAGES.map(stage => {
+    const items = clients.filter(c=>c.stage===stage);
+    return `
+      <div class="pip-col">
+        <div class="pip-col-hdr">
+          <div class="pip-col-dot" style="background:${STAGE_DOTS[stage]}"></div>
+          <div class="pip-col-name">${stage}</div>
+          <div class="pip-col-count">${items.length}</div>
+        </div>
+        <div class="pip-col-body">
+          ${items.length?items.map(c=>`
+            <div class="pip-mini-card" onclick="openDrawer('${c.id}')">
+              <div class="pip-mini-name">${c.name}</div>
+              <div class="pip-mini-meta">${c.assignedTo||''} ${c.type==='service'?'· Service Co.':''}</div>
+              ${c.budget?`<div class="pip-mini-budget">$${Number(c.budget).toLocaleString()}</div>`:''}
+            </div>`).join('')
+          :`<div style="font-size:11px;color:var(--textdim);text-align:center;padding:8px">Empty</div>`}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── MAP ──
+function renderMap(){
+  const mines = clients.filter(c=>c.type==='mine'&&c.coords);
+  const tip = document.getElementById('map-tip');
+  const container = document.getElementById('map-wrap');
+
+  // Build SVG map
+  const svg = `
+    <svg width="100%" height="100%" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="bg2" cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stop-color="#1B2D3F"/><stop offset="100%" stop-color="#0C1017"/>
+        </radialGradient>
+        <filter id="glow2"><feGaussianBlur stdDeviation="4" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect width="800" height="520" fill="url(#bg2)"/>
+      <g stroke="rgba(255,255,255,0.03)" stroke-width="1">
+        ${[130,260,390].map(y=>`<line x1="0" y1="${y}" x2="800" y2="${y}"/>`).join('')}
+        ${[160,320,480,640].map(x=>`<line x1="${x}" y1="0" x2="${x}" y2="520"/>`).join('')}
+      </g>
+      <!-- Zambia outline -->
+      <polygon points="195,65 265,58 318,78 370,62 430,74 490,60 542,84 572,92 602,112 618,144 608,178 628,222 608,262 618,302 598,342 574,366 562,394 532,424 500,448 460,454 418,476 378,488 338,474 298,488 258,474 228,454 196,434 172,402 156,366 148,328 154,286 144,246 154,204 162,172 172,136 184,106 195,65"
+        fill="#162D45" stroke="#2A4060" stroke-width="1.5"/>
+      <!-- Province labels -->
+      ${[
+        [230,190,'Copperbelt'],[170,360,'N.Western'],[310,200,'Northern'],
+        [440,200,'Muchinga'],[380,310,'Eastern'],[290,420,'Central/Southern']
+      ].map(([x,y,l])=>`<text x="${x}" y="${y}" fill="rgba(255,255,255,0.12)" font-size="9" font-family="Space Grotesk" text-anchor="middle">${l}</text>`).join('')}
+      <!-- Mine pins (approximate Zambia coords mapped to SVG) -->
+      ${mines.map((m,i)=>{
+        const pin = getMinePosition(m.coords);
+        const col = STAGE_DOTS[m.stage]||'#6B7280';
+        return `
+          <g class="map-pin" data-id="${m.id}" style="cursor:pointer"
+             onmouseenter="showMapTip(event,'${m.id}')"
+             onmouseleave="hideMapTip()"
+             onclick="openDrawer('${m.id}')">
+            <circle cx="${pin.x}" cy="${pin.y}" r="18" fill="${col}22"/>
+            <circle cx="${pin.x}" cy="${pin.y}" r="9" fill="${col}" filter="url(#glow2)"/>
+            <circle cx="${pin.x}" cy="${pin.y}" r="4" fill="#fff"/>
+            <text x="${pin.x}" y="${pin.y+22}" fill="rgba(255,255,255,0.6)"
+              font-size="8" font-family="Space Grotesk" text-anchor="middle">${m.clientId||''}</text>
+          </g>`;
+      }).join('')}
+      <!-- Legend -->
+      <rect x="14" y="14" width="148" height="100" rx="8" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.07)"/>
+      <text x="88" y="32" fill="rgba(255,255,255,0.6)" font-size="9" font-family="Space Grotesk" text-anchor="middle" font-weight="600">STAGE</text>
+      ${Object.entries(STAGE_DOTS).slice(0,5).map(([s,c],i)=>`
+        <circle cx="26" cy="${46+i*14}" r="4" fill="${c}"/>
+        <text x="36" y="${50+i*14}" fill="rgba(255,255,255,0.5)" font-size="8" font-family="Space Grotesk">${s}</text>
+      `).join('')}
+    </svg>`;
+
+  // Keep tip element, replace rest
+  const existing = container.querySelector('svg');
+  if(existing) existing.remove();
+  container.insertAdjacentHTML('beforeend', svg);
+}
+
+function getMinePosition(coords){
+  if(!coords) return {x:400,y:260};
+  const [lat,lon] = coords.split(',').map(Number);
+  // Zambia approx: lat -8 to -18, lon 22 to 33
+  const x = Math.round(((lon-22)/(33-22)) * 560 + 120);
+  const y = Math.round(((lat-(-8))/((-18)-(-8))) * 400 + 50);
+  return {x: Math.max(50, Math.min(750,x)), y: Math.max(40, Math.min(480,y))};
+}
+
+window.showMapTip = function(e, id){
+  const c = clients.find(x=>x.id===id);
+  if(!c) return;
+  const tip = document.getElementById('map-tip');
+  const mapsUrl = c.coords?`https://www.google.com/maps?q=${encodeURIComponent(c.coords)}`:'#';
+  tip.innerHTML = `
+    <div class="mt-name">${c.name}</div>
+    <div class="mt-co">${c.company||''}</div>
+    <div class="mt-row">📍 <strong>${c.province||'—'}</strong></div>
+    <div class="mt-row">👷 <strong>${c.assignedTo||'—'}</strong> · <span class="stage-pill ${stageClass(c.stage)}" style="font-size:9px">${c.stage||'—'}</span></div>
+    ${c.procurementNeed==='Yes – Immediate'?'<div class="mt-row" style="color:var(--red)">🚨 <strong>Urgent Procurement</strong></div>':''}
+    <a href="${mapsUrl}" target="_blank" class="mt-link">📍 Open in Google Maps</a>`;
+
+  const rect = document.getElementById('map-wrap').getBoundingClientRect();
+  const svgEl = document.querySelector('#map-wrap svg');
+  if(!svgEl) return;
+  const svgRect = svgEl.getBoundingClientRect();
+  let tx = e.clientX - rect.left + 16;
+  let ty = e.clientY - rect.top  + 16;
+  if(tx+220 > rect.width)  tx -= 240;
+  if(ty+180 > rect.height) ty -= 180;
+  tip.style.left = tx+'px'; tip.style.top = ty+'px';
+  tip.classList.add('show');
+};
+window.hideMapTip = ()=>document.getElementById('map-tip').classList.remove('show');
+
+// ── ADMIN PANEL ──
+function renderAdminPanel(){
+  if(currentRole!=='admin') return;
+  const salespeople = ['Marcel','Kelvin','Castrol'];
+  const spRows = salespeople.map(sp=>{
+    const mine  = clients.filter(c=>c.assignedTo===sp);
+    const won   = mine.filter(c=>c.stage==='Closed – Won').length;
+    const total = mine.length;
+    const pct   = total ? Math.round(won/total*100) : 0;
+    const pipeline$ = mine.reduce((s,c)=>s+(Number(c.budget)||0),0);
+    return `
+      <div class="sp-row">
+        <div class="sp-av" style="background:${SP_COLORS[sp]||'#666'}">${sp[0]}</div>
+        <div style="flex:1">
+          <div class="sp-name">${sp}</div>
+          <div class="sp-stats">${total} clients · $${(pipeline$/1000).toFixed(0)}K pipeline · ${won} won</div>
+          <div class="sp-pipeline-bar"><div class="sp-pipeline-fill" style="width:${pct}%"></div></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('admin-content').innerHTML = `
+    <div class="admin-card">
+      <div class="admin-card-hdr">Salesperson Performance</div>
+      <div class="admin-card-body">${spRows}</div>
+    </div>
+    <div class="admin-card">
+      <div class="admin-card-hdr">Database Summary</div>
+      <div class="admin-card-body">
+        <div class="sp-row">
+          <div style="flex:1"><div class="sp-name">Total Clients</div><div class="sp-stats">Mines + Service Companies</div></div>
+          <div style="font-size:22px;font-weight:700;color:var(--text)">${clients.length}</div>
+        </div>
+        <div class="sp-row">
+          <div style="flex:1"><div class="sp-name">Active Pipeline</div><div class="sp-stats">Prospect → Negotiation</div></div>
+          <div style="font-size:22px;font-weight:700;color:var(--gold)">$${(clients.reduce((s,c)=>s+(Number(c.budget)||0),0)/1000).toFixed(0)}K</div>
+        </div>
+        <div class="sp-row">
+          <div style="flex:1"><div class="sp-name">Urgent Needs</div><div class="sp-stats">Immediate procurement</div></div>
+          <div style="font-size:22px;font-weight:700;color:var(--red)">${clients.filter(c=>c.procurementNeed==='Yes – Immediate').length}</div>
+        </div>
+        <button class="btn-export" onclick="exportCSV()" style="margin-top:12px;width:100%">
+          📥 Export to CSV (for Google Sheets)
+        </button>
+      </div>
+    </div>`;
+}
+
+// ── EXPORT CSV ──
+window.exportCSV = function(){
+  const headers = ['ID','Type','Name','Company','Province','District','GPS','Commodity','Method',
+    'Contact 1','Role 1','Phone 1','Email 1','Equipment Categories','Procurement Need',
+    'Budget','Target Quarter','Assigned To','Stage','Issues','Notes','Linked Mines/Services'];
+  const rows = clients.map(c=>{
+    const ct = (c.contacts||[])[0]||{};
+    const eqs = (c.equipment||[]).map(e=>e.category).join('; ');
+    const links = c.type==='service'
+      ? (c.linkedMines||[]).map(id=>clients.find(x=>x.id===id)?.name||id).join('; ')
+      : clients.filter(s=>s.type==='service'&&(s.linkedMines||[]).includes(c.id)).map(s=>s.name).join('; ');
+    return [c.clientId,c.type,c.name,c.company,c.province,c.district,c.coords,
+      c.commodity,c.method,ct.name,ct.role,ct.phone,ct.email,eqs,
+      c.procurementNeed,c.budget,c.targetQuarter,c.assignedTo,c.stage,
+      c.issues,c.notes,links].map(v=>'"'+(v||'').toString().replace(/"/g,'""')+'"').join(',');
+  });
+  const blob = new Blob([[headers.join(','), ...rows].join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='GMX_Clients_Export.csv'; a.click();
+  toast('CSV exported — open in Google Sheets ✅');
+};
+
+// ── PANEL SWITCHING ──
+window.switchPanel = function(id){
+  ['clients','pipeline','map','admin'].forEach(p=>{
+    const el = document.getElementById('panel-'+p);
+    if(el) el.classList.toggle('active', p===id);
+    document.getElementById('bnav-'+p)?.classList.toggle('active', p===id);
+  });
+  if(id==='map') renderMap();
+  if(id==='pipeline') renderPipeline();
+  if(id==='admin') renderAdminPanel();
+};
+
+// ══════════════════════════════════════════════════
+// WIZARD
+// ══════════════════════════════════════════════════
+const MINE_STEPS  = ['Mine Info','Contacts','Equipment','Sales','Review'];
+const SVC_STEPS   = ['Company Info','Contacts','Equipment','Links & Sales','Review'];
+
+window.openWizard = function(editId=null){
+  editingId = editId;
+  wizardData = {};
+  wizardStep = 1;
+  contactCount = 0;
+  eqCount = 0;
+
+  if(editId){
+    const c = clients.find(x=>x.id===editId);
+    if(c){ wizardData = JSON.parse(JSON.stringify(c)); wizardType = c.type; }
+    document.getElementById('wiz-title').textContent = 'Edit Client';
+    document.getElementById('wiz-type-row').style.display='none';
+    closeDrawer();
+  } else {
+    document.getElementById('wiz-title').textContent = 'Add New Client';
+    document.getElementById('wiz-type-row').style.display='flex';
+  }
+
+  setWizType(wizardData.type||'mine', true);
+  document.getElementById('wiz-overlay').classList.add('open');
+};
+
+window.closeWizard = function(){
+  document.getElementById('wiz-overlay').classList.remove('open');
+};
+
+window.setWizType = function(type, skipRender=false){
+  wizardType = type;
+  document.getElementById('wt-mine').classList.toggle('on', type==='mine');
+  document.getElementById('wt-svc').classList.toggle('on',  type==='svc');
+  if(!skipRender){ wizardStep=1; renderWizard(); }
+  else renderWizard();
+};
+
+function renderWizard(){
+  const steps = wizardType==='mine' ? MINE_STEPS : SVC_STEPS;
+  // Steps bar
+  document.getElementById('wiz-steps').innerHTML = steps.map((s,i)=>`
+    <div class="wiz-step ${i+1<wizardStep?'done':i+1===wizardStep?'active':''}">
+      <div class="ws-circle">${i+1<wizardStep?'✓':i+1}</div>
+      <div class="ws-label">${s}</div>
+    </div>`).join('');
+
+  document.getElementById('wiz-step-count').textContent = `Step ${wizardStep} of ${steps.length}`;
+  document.getElementById('wbtn-back').style.display = wizardStep>1?'block':'none';
+  document.getElementById('wbtn-next').textContent = wizardStep===steps.length?'Save ✓':'Next →';
+
+  // Body
+  const d = wizardData;
+  let html = '';
+
+  if(wizardType==='mine'){
+    if(wizardStep===1) html = `
+      <div class="form-row">
+        <div class="fg"><label>Mine Name <span class="req">*</span></label><input id="wf-name" value="${d.name||''}" placeholder="e.g. Lumwana Copper Mine"></div>
+        <div class="fg"><label>Company / Owner <span class="req">*</span></label><input id="wf-company" value="${d.company||''}" placeholder="e.g. Barrick Gold Corp"></div>
+      </div>
+      <div class="form-row three">
+        <div class="fg"><label>Province</label><select id="wf-province">${PROVINCES.map(p=>`<option${p===d.province?' selected':''}>${p}</option>`).join('')}</select></div>
+        <div class="fg"><label>District</label><input id="wf-district" value="${d.district||''}" placeholder="e.g. Solwezi"></div>
+        <div class="fg"><label>GPS Coords</label><input id="wf-coords" value="${d.coords||''}" placeholder="-12.15, 25.87"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Commodity</label><input id="wf-commodity" value="${d.commodity||''}" placeholder="e.g. Copper, Gold"></div>
+        <div class="fg"><label>Mining Method</label>
+          <select id="wf-method">
+            ${['Open Pit','Underground','Alluvial/Placer','Quarry','Heap Leach','Strip Mining','Other'].map(m=>`<option${m===d.method?' selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="fg"><label>Operation Type</label>
+          <select id="wf-opType">${['Active Production','Exploration','Care & Maintenance','Development','Rehabilitation','Other'].map(m=>`<option${m===d.opType?' selected':''}>${m}</option>`).join('')}</select>
+        </div>
+      </div>`;
+  } else {
+    if(wizardStep===1) html = `
+      <div class="form-row">
+        <div class="fg"><label>Company Name <span class="req">*</span></label><input id="wf-name" value="${d.name||''}" placeholder="e.g. Geo Survey Solutions Ltd"></div>
+        <div class="fg"><label>Trading Name / Brand</label><input id="wf-company" value="${d.company||''}" placeholder="e.g. GeoSS"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Province (based)</label><select id="wf-province"><option value="">— Province —</option>${PROVINCES.map(p=>`<option${p===d.province?' selected':''}>${p}</option>`).join('')}</select></div>
+        <div class="fg"><label>Town / City</label><input id="wf-district" value="${d.district||''}" placeholder="e.g. Ndola"></div>
+      </div>
+      <div class="form-row single">
+        <div class="fg"><label>Services Offered</label><textarea id="wf-commodity">${d.commodity||''}</textarea></div>
+      </div>`;
+  }
+
+  if(wizardStep===2) html = buildContactsStep(d);
+  if(wizardStep===3) html = buildEquipmentStep(d);
+  if(wizardStep===4) html = buildSalesStep(d);
+  if(wizardStep===5) html = buildReviewStep(d);
+
+  document.getElementById('wiz-body').innerHTML = html;
+
+  // Restore dynamic contact blocks
+  if(wizardStep===2) initContactBlocks(d.contacts||[]);
+  if(wizardStep===3) initEqBlocks(d.equipment||[]);
+}
+
+function buildContactsStep(d){
+  return `
+    <div id="contacts-wrap"></div>
+    <button class="btn-add-block" onclick="addContactBlock()">＋ Add Contact Person</button>`;
+}
+
+function initContactBlocks(existing){
+  contactCount=0;
+  const wrap = document.getElementById('contacts-wrap');
+  if(!wrap) return;
+  if(existing.length===0) addContactBlock();
+  else existing.forEach(c=>addContactBlock(c));
+}
+
+window.addContactBlock = function(pre={}){
+  contactCount++;
+  const id=contactCount;
+  const wrap = document.getElementById('contacts-wrap');
+  const div = document.createElement('div');
+  div.className='wiz-contact-block'; div.id=`cb-${id}`;
+  div.innerHTML = `
+    <div class="wiz-contact-label">Contact #${id}</div>
+    ${id>1?`<button class="btn-remove" onclick="document.getElementById('cb-${id}').remove()">✕</button>`:''}
+    <div class="form-row">
+      <div class="fg"><label>Full Name <span class="req">*</span></label><input id="cn-${id}" value="${pre.name||''}" placeholder="Full name"></div>
+      <div class="fg"><label>Job Title</label><input id="cr-${id}" value="${pre.role||''}" placeholder="e.g. Chief Surveyor"></div>
+    </div>
+    <div class="form-row three">
+      <div class="fg"><label>Department</label>
+        <select id="cd-${id}">
+          ${['Survey / Geomatics','Geo-Tech / Safety','IT / Systems','Fleet / Machine Control','Mine Planning','Management','Other'].map(d=>`<option${d===pre.dept?' selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Phone</label><input id="cp-${id}" value="${pre.phone||''}" placeholder="+260 9XX XXX"></div>
+      <div class="fg"><label>Email</label><input id="ce-${id}" value="${pre.email||''}" placeholder="name@co.com"></div>
+    </div>`;
+  wrap.appendChild(div);
+};
+
+function collectContacts(){
+  const contacts=[];
+  document.querySelectorAll('.wiz-contact-block').forEach(b=>{
+    const id=b.id.replace('cb-','');
+    const name=(document.getElementById(`cn-${id}`)?.value||'').trim();
+    if(name) contacts.push({
+      name, role:document.getElementById(`cr-${id}`)?.value||'',
+      dept:document.getElementById(`cd-${id}`)?.value||'',
+      phone:document.getElementById(`cp-${id}`)?.value||'',
+      email:document.getElementById(`ce-${id}`)?.value||'',
+    });
+  });
+  return contacts;
+}
+
+function buildEquipmentStep(d){
+  return `
+    <div style="margin-bottom:12px;font-size:12px;color:var(--textdim)">Select all equipment categories present on site:</div>
+    <div class="eq-pills" id="eq-pills">
+      ${EQ_CATS.map(cat=>{
+        const on=(d.equipment||[]).some(e=>e.category===cat);
+        return `<div class="eq-pill${on?' on':''}" onclick="toggleEqPill(this,'${cat}')">${cat}</div>`;
+      }).join('')}
+    </div>
+    <div id="eq-detail-wrap"></div>
+    <div class="form-row single" style="margin-top:8px">
+      <div class="fg"><label>Issues / Pain Points</label>
+        <textarea id="wf-issues">${d.issues||''}</textarea>
+      </div>
+    </div>`;
+}
+
+function initEqBlocks(existing){
+  // re-render details for already-on pills
+  document.querySelectorAll('.eq-pill.on').forEach(p=>{
+    const cat = p.textContent;
+    const ex  = existing.find(e=>e.category===cat)||{};
+    addEqBlock(cat, ex);
+  });
+}
+
+window.toggleEqPill = function(el, cat){
+  el.classList.toggle('on');
+  if(el.classList.contains('on')) addEqBlock(cat);
+  else document.getElementById(`eq-block-${cat.replace(/\W/g,'')}`).remove();
+};
+
+function addEqBlock(cat, pre={}){
+  const wrap = document.getElementById('eq-detail-wrap');
+  const key  = cat.replace(/\W/g,'');
+  if(document.getElementById(`eq-block-${key}`)) return;
+  const div=document.createElement('div');
+  div.className='eq-block'; div.id=`eq-block-${key}`;
+  div.style.marginBottom='10px';
+  div.innerHTML=`
+    <div class="eq-cat" style="margin-bottom:8px">${cat}</div>
+    <div class="form-row three">
+      <div class="fg"><label>Brand</label><input id="eb-${key}" value="${pre.brand||''}" placeholder="e.g. Leica"></div>
+      <div class="fg"><label>Model</label><input id="em-${key}" value="${pre.model||''}" placeholder="e.g. TS16"></div>
+      <div class="fg"><label>Software / Version</label><input id="es-${key}" value="${pre.software||''}" placeholder="e.g. Leica Infinity 4.0"></div>
+    </div>`;
+  wrap.appendChild(div);
+}
+
+function collectEquipment(){
+  return [...document.querySelectorAll('.eq-pill.on')].map(p=>{
+    const cat=p.textContent; const k=cat.replace(/\W/g,'');
+    return {
+      category:cat,
+      brand:document.getElementById(`eb-${k}`)?.value||'',
+      model:document.getElementById(`em-${k}`)?.value||'',
+      software:document.getElementById(`es-${k}`)?.value||'',
+    };
+  });
+}
+
+function buildSalesStep(d){
+  const mineList = wizardType==='svc'
+    ? clients.filter(c=>c.type==='mine').map(m=>`
+        <div class="mine-link-item">
+          <input type="checkbox" id="ml-${m.id}" ${(d.linkedMines||[]).includes(m.id)?'checked':''}>
+          <label for="ml-${m.id}">${m.name} <span style="color:var(--textdim);font-size:10px">${m.province||''}</span></label>
+        </div>`).join('')
+    : '';
+
+  return `
+    ${wizardType==='svc'?`
+      <div style="margin-bottom:16px">
+        <div class="section-label" style="margin-bottom:10px">⛏️ Link to Mine Sites</div>
+        <div id="mine-links-wrap">${mineList||'<p style="font-size:12px;color:var(--textdim)">No mines in database yet. Add mines first.</p>'}</div>
+      </div>`:''}
+    <div class="form-row">
+      <div class="fg"><label>Assigned Salesperson <span class="req">*</span></label>
+        <select id="wf-assignedTo">
+          <option value="">— Assign —</option>
+          ${['Marcel','Kelvin','Castrol'].map(s=>`<option${s===d.assignedTo?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Pipeline Stage <span class="req">*</span></label>
+        <select id="wf-stage">
+          ${STAGES.map(s=>`<option${s===d.stage?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Procurement Need</label>
+        <select id="wf-procurementNeed">
+          ${['Yes – Immediate','Yes – This Year','Possible','No','Unknown'].map(s=>`<option${s===d.procurementNeed?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Budget (USD)</label>
+        <input type="number" id="wf-budget" value="${d.budget||''}" placeholder="45000">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Target Quarter</label>
+        <select id="wf-targetQuarter">
+          ${['Q1 2025','Q2 2025','Q3 2025','Q4 2025','Q1 2026','Q2 2026','Q3 2026','Q4 2026','2027+','Unknown'].map(s=>`<option${s===d.targetQuarter?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row single">
+      <div class="fg"><label>General Notes</label>
+        <textarea id="wf-notes">${d.notes||''}</textarea>
+      </div>
+    </div>`;
+}
+
+function buildReviewStep(d){
+  return `
+    <div style="background:var(--panel);border-radius:var(--radius);padding:16px;margin-bottom:14px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        ${[['Name',d.name],['Company',d.company],['Type',d.type==='mine'?'Mine':'Service Company'],
+          ['Province',d.province],['GPS',d.coords],
+          ['Contacts',(d.contacts||[]).map(c=>c.name).join(', ')||'—'],
+          ['Equipment',(d.equipment||[]).map(e=>e.category).join(', ')||'—'],
+          ['Salesperson',d.assignedTo],['Stage',d.stage],
+          ['Procurement',d.procurementNeed],['Budget',d.budget?'$'+Number(d.budget).toLocaleString():'—'],
+        ].map(([k,v])=>`
+          <tr>
+            <td style="padding:6px 8px;color:var(--textdim);width:130px;border-bottom:1px solid var(--border)">${k}</td>
+            <td style="padding:6px 8px;color:var(--text);font-weight:500;border-bottom:1px solid var(--border)">${v||'—'}</td>
+          </tr>`).join('')}
+      </table>
+    </div>
+    <p style="font-size:11px;color:var(--textdim);text-align:center">All looks good? Click <strong style="color:var(--copper)">Save</strong> to add to the database.</p>`;
+}
+
+function collectSalesData(){
+  const linkedMines = [...document.querySelectorAll('[id^="ml-"]:checked')].map(c=>c.id.replace('ml-',''));
+  return {
+    assignedTo:   document.getElementById('wf-assignedTo')?.value||'',
+    stage:        document.getElementById('wf-stage')?.value||'Prospect',
+    procurementNeed: document.getElementById('wf-procurementNeed')?.value||'',
+    budget:       document.getElementById('wf-budget')?.value||'',
+    targetQuarter:document.getElementById('wf-targetQuarter')?.value||'',
+    notes:        document.getElementById('wf-notes')?.value||'',
+    linkedMines,
+  };
+}
+
+window.wizNext = async function(){
+  const steps = wizardType==='mine' ? MINE_STEPS : SVC_STEPS;
+
+  // Collect data for current step
+  if(wizardStep===1){
+    const name = document.getElementById('wf-name')?.value?.trim();
+    if(!name){ toast('⚠️ Please enter a name'); return; }
+    Object.assign(wizardData, {
+      type: wizardType==='mine'?'mine':'service',
+      name,
+      company: document.getElementById('wf-company')?.value||'',
+      province: document.getElementById('wf-province')?.value||'',
+      district: document.getElementById('wf-district')?.value||'',
+      coords:   document.getElementById('wf-coords')?.value||'',
+      commodity:document.getElementById('wf-commodity')?.value||'',
+      method:   document.getElementById('wf-method')?.value||'',
+      opType:   document.getElementById('wf-opType')?.value||'',
+    });
+  }
+  if(wizardStep===2) wizardData.contacts = collectContacts();
+  if(wizardStep===3){
+    wizardData.equipment = collectEquipment();
+    wizardData.issues = document.getElementById('wf-issues')?.value||'';
+  }
+  if(wizardStep===4) Object.assign(wizardData, collectSalesData());
+
+  // Save on last step
+  if(wizardStep===steps.length){
+    await saveClient();
+    return;
+  }
+
+  wizardStep++;
+  renderWizard();
+};
+
+window.wizBack = function(){
+  if(wizardStep<=1) return;
+  wizardStep--;
+  renderWizard();
+};
+
+async function saveClient(){
+  const btn = document.getElementById('wbtn-next');
+  btn.disabled=true; btn.textContent='Saving…';
+  try{
+    const payload = {
+      ...wizardData,
+      updatedAt: serverTimestamp(),
+    };
+    if(editingId){
+      await updateDoc(doc(db,'clients',editingId), payload);
+      toast('✅ Client updated');
+    } else {
+      // Generate ID
+      const countSnap = await getDocs(collection(db,'clients'));
+      const nextNum   = String(countSnap.size+1).padStart(3,'0');
+      payload.clientId   = wizardData.type==='mine' ? `ZM-${nextNum}` : `SV-${nextNum}`;
+      payload.createdAt  = serverTimestamp();
+      payload.createdBy  = currentUser.uid;
+      await addDoc(collection(db,'clients'), payload);
+      toast('✅ Client added to database');
+    }
+    closeWizard();
+  } catch(e){
+    toast('❌ Error: '+e.message, 4000);
+    btn.disabled=false; btn.textContent='Save ✓';
+  }
+}
+
+window.deleteClient = async function(id){
+  if(!confirm('Delete this client? This cannot be undone.')) return;
+  await deleteDoc(doc(db,'clients',id));
+  document.getElementById('drawer-overlay').classList.remove('open');
+  toast('🗑️ Client deleted');
+};
+
+</script>
+
+</body>
+</html>
