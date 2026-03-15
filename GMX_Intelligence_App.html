@@ -1615,7 +1615,7 @@ window.switchPanel = function(id){
 // WIZARD
 // ══════════════════════════════════════════════════
 const MINE_STEPS  = ['Mine Info','Contacts','Equipment','Sales','Review'];
-const SVC_STEPS   = ['Company Info','Contacts','Equipment','Links & Sales','Review'];
+const SVC_STEPS   = ['Company Info','Link Mines','Contacts','Equipment','Sales','Review'];
 
 window.openWizard = function(editId=null){
   editingId = editId;
@@ -1692,6 +1692,10 @@ function renderWizard(){
           <select id="wf-opType">${['Active Production','Exploration','Care & Maintenance','Development','Rehabilitation','Other'].map(m=>`<option${m===d.opType?' selected':''}>${m}</option>`).join('')}</select>
         </div>
       </div>`;
+    if(wizardStep===2) html = buildContactsStep(d);
+    if(wizardStep===3) html = buildEquipmentStep(d);
+    if(wizardStep===4) html = buildSalesStep(d);
+    if(wizardStep===5) html = buildReviewStep(d);
   } else {
     if(wizardStep===1) html = `
       <div class="form-row">
@@ -1705,24 +1709,49 @@ function renderWizard(){
       <div class="form-row single">
         <div class="fg"><label>Services Offered</label><textarea id="wf-commodity">${d.commodity||''}</textarea></div>
       </div>`;
+    if(wizardStep===2) html = buildMineLinksStep(d);
+    if(wizardStep===3) html = buildContactsStep(d);
+    if(wizardStep===4) html = buildEquipmentStep(d);
+    if(wizardStep===5) html = buildSalesStep(d);
+    if(wizardStep===6) html = buildReviewStep(d);
   }
-
-  if(wizardStep===2) html = buildContactsStep(d);
-  if(wizardStep===3) html = buildEquipmentStep(d);
-  if(wizardStep===4) html = buildSalesStep(d);
-  if(wizardStep===5) html = buildReviewStep(d);
 
   document.getElementById('wiz-body').innerHTML = html;
 
-  // Restore dynamic contact blocks
-  if(wizardStep===2) initContactBlocks(d.contacts||[]);
-  if(wizardStep===3) initEqBlocks(d.equipment||[]);
+  // Restore dynamic blocks based on type and step
+  const contactStep = wizardType==='mine' ? 2 : 3;
+  const eqStep      = wizardType==='mine' ? 3 : 4;
+  if(wizardStep===contactStep) initContactBlocks(d.contacts||[]);
+  if(wizardStep===eqStep)      initEqBlocks(d.equipment||[]);
 }
 
 function buildContactsStep(d){
   return `
     <div id="contacts-wrap"></div>
     <button class="btn-add-block" onclick="addContactBlock()">＋ Add Contact Person</button>`;
+}
+function buildMineLinksStep(d){
+  const mines = clients.filter(c=>c.type==='mine');
+  if(!mines.length) return `
+    <div class="empty">
+      <div class="empty-ico">⛏️</div>
+      <p>No mines in the database yet.<br>Add mines first, then link this service company.</p>
+    </div>`;
+  return `
+    <div style="font-size:13px;color:var(--textdim);margin-bottom:16px">
+      Select all mine sites this service company operates at:
+    </div>
+    <div id="mine-links-wrap">
+      ${mines.map(m=>`
+        <div class="mine-link-item">
+          <input type="checkbox" id="mlnk-${m.id}"
+            ${(d.linkedMines||[]).includes(m.id)?'checked':''}>
+          <label for="mlnk-${m.id}" style="cursor:pointer">
+            <span style="font-weight:600;color:var(--text)">${m.name}</span>
+            <span style="color:var(--textdim);font-size:11px"> · ${m.company||''} · ${m.province||''}</span>
+          </label>
+        </div>`).join('')}
+    </div>`;
 }
 
 function initContactBlocks(existing){
@@ -1752,25 +1781,48 @@ window.addContactBlock = function(pre={}){
           ${['Survey / Geomatics','Geo-Tech / Safety','IT / Systems','Fleet / Machine Control','Mine Planning','Management','Other'].map(d=>`<option${d===pre.dept?' selected':''}>${d}</option>`).join('')}
         </select>
       </div>
-      <div class="fg"><label>Phone</label><input id="cp-${id}" value="${pre.phone||''}" placeholder="+260 9XX XXX"></div>
-      <div class="fg"><label>Email</label><input id="ce-${id}" value="${pre.email||''}" placeholder="name@co.com"></div>
+      <div class="fg"><label>Phone <span class="req">*</span></label><input id="cp-${id}" value="${pre.phone||''}" placeholder="+260 9XX XXX"></div>
+      <div class="fg"><label>Email <span class="req">*</span></label><input id="ce-${id}" value="${pre.email||''}" placeholder="name@co.com"></div>
     </div>`;
   wrap.appendChild(div);
 };
 
 function collectContacts(){
   const contacts=[];
+  let valid = true;
   document.querySelectorAll('.wiz-contact-block').forEach(b=>{
-    const id=b.id.replace('cb-','');
-    const name=(document.getElementById(`cn-${id}`)?.value||'').trim();
-    if(name) contacts.push({
+    const id    = b.id.replace('cb-','');
+    const name  = (document.getElementById(`cn-${id}`)?.value||'').trim();
+    const phone = (document.getElementById(`cp-${id}`)?.value||'').trim();
+    const email = (document.getElementById(`ce-${id}`)?.value||'').trim();
+    if(!name) return; // skip empty blocks
+    if(!phone){
+      toast(`⚠️ Contact #${id}: phone number is required`);
+      // Highlight the field
+      const el = document.getElementById(`cp-${id}`);
+      if(el){ el.style.borderColor='var(--red)'; el.focus(); }
+      valid = false; return;
+    }
+    if(!email){
+      toast(`⚠️ Contact #${id}: email address is required`);
+      const el = document.getElementById(`ce-${id}`);
+      if(el){ el.style.borderColor='var(--red)'; el.focus(); }
+      valid = false; return;
+    }
+    // Basic email format check
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      toast(`⚠️ Contact #${id}: please enter a valid email address`);
+      const el = document.getElementById(`ce-${id}`);
+      if(el){ el.style.borderColor='var(--red)'; el.focus(); }
+      valid = false; return;
+    }
+    contacts.push({
       name, role:document.getElementById(`cr-${id}`)?.value||'',
       dept:document.getElementById(`cd-${id}`)?.value||'',
-      phone:document.getElementById(`cp-${id}`)?.value||'',
-      email:document.getElementById(`ce-${id}`)?.value||'',
+      phone, email,
     });
   });
-  return contacts;
+  return valid ? contacts : null;
 }
 
 function buildEquipmentStep(d){
@@ -1835,20 +1887,7 @@ function collectEquipment(){
 }
 
 function buildSalesStep(d){
-  const mineList = wizardType==='svc'
-    ? clients.filter(c=>c.type==='mine').map(m=>`
-        <div class="mine-link-item">
-          <input type="checkbox" id="ml-${m.id}" ${(d.linkedMines||[]).includes(m.id)?'checked':''}>
-          <label for="ml-${m.id}">${m.name} <span style="color:var(--textdim);font-size:10px">${m.province||''}</span></label>
-        </div>`).join('')
-    : '';
-
   return `
-    ${wizardType==='svc'?`
-      <div style="margin-bottom:16px">
-        <div class="section-label" style="margin-bottom:10px">⛏️ Link to Mine Sites</div>
-        <div id="mine-links-wrap">${mineList||'<p style="font-size:12px;color:var(--textdim)">No mines in database yet. Add mines first.</p>'}</div>
-      </div>`:''}
     <div class="form-row">
       <div class="fg"><label>Assigned Salesperson <span class="req">*</span></label>
         <select id="wf-assignedTo">
@@ -1907,15 +1946,13 @@ function buildReviewStep(d){
 }
 
 function collectSalesData(){
-  const linkedMines = [...document.querySelectorAll('[id^="ml-"]:checked')].map(c=>c.id.replace('ml-',''));
   return {
-    assignedTo:   document.getElementById('wf-assignedTo')?.value||'',
-    stage:        document.getElementById('wf-stage')?.value||'Prospect',
+    assignedTo:      document.getElementById('wf-assignedTo')?.value||'',
+    stage:           document.getElementById('wf-stage')?.value||'Prospect',
     procurementNeed: document.getElementById('wf-procurementNeed')?.value||'',
-    budget:       document.getElementById('wf-budget')?.value||'',
-    targetQuarter:document.getElementById('wf-targetQuarter')?.value||'',
-    notes:        document.getElementById('wf-notes')?.value||'',
-    linkedMines,
+    budget:          document.getElementById('wf-budget')?.value||'',
+    targetQuarter:   document.getElementById('wf-targetQuarter')?.value||'',
+    notes:           document.getElementById('wf-notes')?.value||'',
   };
 }
 
@@ -1939,12 +1976,31 @@ window.wizNext = async function(){
       opType:    document.getElementById('wf-opType')?.value   || '',
     });
   }
-  if(wizardStep===2) wizardData.contacts = collectContacts();
-  if(wizardStep===3){
+
+  // ── Service company: Step 2 = Link Mines ──
+  if(wizardType==='svc' && wizardStep===2){
+    wizardData.linkedMines = [...document.querySelectorAll('#mine-links-wrap input[type="checkbox"]:checked')]
+      .map(cb => cb.id.replace('mlnk-',''));
+  }
+
+  // ── Contacts: Mine=step2, Service=step3 ──
+  const contactStep = wizardType==='mine' ? 2 : 3;
+  if(wizardStep===contactStep){
+    const contacts = collectContacts();
+    if(contacts === null) return; // validation failed
+    wizardData.contacts = contacts;
+  }
+
+  // ── Equipment: Mine=step3, Service=step4 ──
+  const eqStep = wizardType==='mine' ? 3 : 4;
+  if(wizardStep===eqStep){
     wizardData.equipment = collectEquipment();
     wizardData.issues = document.getElementById('wf-issues')?.value||'';
   }
-  if(wizardStep===4) Object.assign(wizardData, collectSalesData());
+
+  // ── Sales: Mine=step4, Service=step5 ──
+  const salesStep = wizardType==='mine' ? 4 : 5;
+  if(wizardStep===salesStep) Object.assign(wizardData, collectSalesData());
 
   // Save on last step
   if(wizardStep===steps.length){
