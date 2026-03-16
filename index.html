@@ -1596,14 +1596,26 @@ function renderMap(){
 
 // ── ADMIN PANEL ──
 function renderAdminPanel(){
-  if(currentRole!=='admin') return;
+  const adminContent = document.getElementById('admin-content');
+  if(!adminContent) return;
+  if(currentRole !== 'admin'){
+    adminContent.innerHTML = `<div class="empty"><div class="empty-ico">🔒</div><p>Admin access only.</p></div>`;
+    return;
+  }
+
   const salespeople = ['Marcel','Kelvin','Castrol'];
+
+  // Case-insensitive match on assignedTo
+  const byPerson = (sp) => clients.filter(c =>
+    (c.assignedTo||'').toLowerCase() === sp.toLowerCase()
+  );
+
   const spRows = salespeople.map(sp=>{
-    const mine  = clients.filter(c=>c.assignedTo===sp);
-    const won   = mine.filter(c=>c.stage==='Closed – Won').length;
-    const total = mine.length;
-    const pct   = total ? Math.round(won/total*100) : 0;
-    const pipeline$ = mine.reduce((s,c)=>s+(Number(c.budget)||0),0);
+    const assigned = byPerson(sp);
+    const won      = assigned.filter(c=>c.stage==='Closed – Won').length;
+    const total    = assigned.length;
+    const pct      = total ? Math.round(won/total*100) : 0;
+    const pipeline$ = assigned.reduce((s,c)=>s+(Number(c.budget)||0),0);
     return `
       <div class="sp-row">
         <div class="sp-av" style="background:${SP_COLORS[sp]||'#666'}">${sp[0]}</div>
@@ -1635,9 +1647,38 @@ function renderAdminPanel(){
           <div style="flex:1"><div class="sp-name">Urgent Needs</div><div class="sp-stats">Immediate procurement</div></div>
           <div style="font-size:22px;font-weight:700;color:var(--red)">${clients.filter(c=>c.procurementNeed==='Yes – Immediate').length}</div>
         </div>
-        <button class="btn-export" onclick="exportCSV()" style="margin-top:12px;width:100%">
-          📥 Export to CSV (for Google Sheets)
-        </button>
+        ${clients.length > 0 ? `
+        <div style="margin-top:12px;padding:10px 12px;background:var(--raised);border-radius:8px;font-size:10px;color:var(--textdim)">
+          <strong style="color:var(--textdim)">Assigned-to values in database:</strong><br>
+          ${[...new Set(clients.map(c=>c.assignedTo||'(none)'))].join(', ')}
+        </div>` : ''}
+
+        <div style="margin-top:16px;padding:14px;background:var(--panel);border-radius:10px;border:1px solid var(--border2)">
+          <div style="font-size:10px;font-weight:700;color:var(--copper);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">
+            ☁️ Google Sheets Backup
+          </div>
+          <div style="font-size:11px;color:var(--textdim);margin-bottom:10px;line-height:1.5">
+            Backs up all client data to your Google Sheet weekly (Sunday 6am).<br>
+            Paste your Apps Script Web App URL below to enable.
+          </div>
+          <input id="backup-url-input"
+            placeholder="Paste Apps Script Web App URL here..."
+            value="${localStorage.getItem('gmx-backup-url')||''}"
+            style="width:100%;padding:9px 12px;background:var(--raised);border:1.5px solid var(--border2);
+              border-radius:8px;color:var(--text);font-size:11px;font-family:'Space Grotesk',sans-serif;
+              outline:none;margin-bottom:8px;"
+            oninput="localStorage.setItem('gmx-backup-url', this.value)"
+          >
+          <div style="display:flex;gap:8px">
+            <button class="btn-export" onclick="runBackup()" style="flex:1;margin:0">
+              ☁️ Backup Now to Google Sheets
+            </button>
+            <button class="btn-export" onclick="exportCSV()" style="flex:1;margin:0;background:rgba(74,158,191,0.15);border-color:rgba(74,158,191,0.3);color:#6BBDD6">
+              📥 Export CSV
+            </button>
+          </div>
+          <div id="backup-status" style="margin-top:8px;font-size:11px;color:var(--textdim);text-align:center;min-height:16px"></div>
+        </div>
       </div>
     </div>`;
 }
@@ -1664,6 +1705,65 @@ window.exportCSV = function(){
   toast('CSV exported — open in Google Sheets ✅');
 };
 
+// ── BACKUP TO GOOGLE SHEETS ──
+window.runBackup = async function(){
+  const url    = localStorage.getItem('gmx-backup-url');
+  const status = document.getElementById('backup-status');
+  if(!url || !url.startsWith('https://')){
+    status.style.color = 'var(--red)';
+    status.textContent = '⚠️ Please paste your Apps Script Web App URL first';
+    return;
+  }
+  status.style.color = 'var(--textdim)';
+  status.textContent = '⏳ Sending backup to Google Sheets…';
+
+  // Prepare payload — contacts and equipment as readable strings
+  const payload = clients.map(c => ({
+    clientId:        c.clientId || '',
+    type:            c.type || '',
+    name:            c.name || '',
+    company:         c.company || '',
+    province:        c.province || '',
+    district:        c.district || '',
+    coords:          c.coords || '',
+    commodity:       c.commodity || '',
+    method:          c.method || '',
+    opType:          c.opType || '',
+    contacts:        (c.contacts||[]).map(ct =>
+                       [ct.name, ct.role, ct.dept, ct.phone, ct.email].filter(Boolean).join(' | ')
+                     ).join('; '),
+    equipment:       (c.equipment||[]).map(e =>
+                       [e.category, e.brand, e.model, e.software].filter(Boolean).join(': ')
+                     ).join('; '),
+    procurementNeed: c.procurementNeed || '',
+    budget:          c.budget || '',
+    targetQuarter:   c.targetQuarter || '',
+    assignedTo:      c.assignedTo || '',
+    stage:           c.stage || '',
+    issues:          c.issues || '',
+    notes:           c.notes || '',
+  }));
+
+  try {
+    const res = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'text/plain' }, // Apps Script requires text/plain for CORS
+      body: JSON.stringify({ secret: 'gmx-zambia-backup-2026', clients: payload }),
+    });
+    const data = await res.json();
+    if(data.status === 'success'){
+      status.style.color = 'var(--teal)';
+      status.textContent = `✅ Backup complete — ${data.count} records saved to Google Sheets`;
+      toast('☁️ Backup to Google Sheets complete!');
+    } else {
+      throw new Error(data.message || 'Unknown error');
+    }
+  } catch(err){
+    status.style.color = 'var(--red)';
+    status.textContent = '❌ Backup failed: ' + err.message;
+  }
+};
+
 // ── PANEL SWITCHING ──
 window.switchPanel = function(id){
   ['clients','pipeline','map','admin'].forEach(p=>{
@@ -1671,9 +1771,9 @@ window.switchPanel = function(id){
     if(el) el.classList.toggle('active', p===id);
     document.getElementById('bnav-'+p)?.classList.toggle('active', p===id);
   });
-  if(id==='map') renderMap();
+  if(id==='map')      renderMap();
   if(id==='pipeline') renderPipeline();
-  if(id==='admin') renderAdminPanel();
+  if(id==='admin')    renderAdminPanel(); // always re-render on switch
 };
 
 // ══════════════════════════════════════════════════
