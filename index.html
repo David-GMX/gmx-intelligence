@@ -1567,13 +1567,19 @@ function renderMap(){
         ? '<div class="mt-row" style="color:#E0705E;font-weight:600">🚨 Urgent Procurement Need</div>' : ''}
       ${linkedSvcs.length
         ? `<div class="mt-row" style="margin-top:6px">🔧 <strong>${linkedSvcs.map(s=>s.name).join(', ')}</strong></div>` : ''}
-      <a href="${mapsUrl}" target="_blank" class="mt-link">📍 Open in Google Maps</a>`;
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <a href="${mapsUrl}" target="_blank" class="mt-link" style="flex:1">📍 Google Maps</a>
+        <button onclick="openDrawer('${mine.id}')" style="
+          flex:1;padding:7px;background:rgba(200,121,65,0.2);
+          border:1px solid rgba(200,121,65,0.3);border-radius:7px;
+          color:var(--copper2,#E8954A);font-size:11px;font-weight:600;
+          cursor:pointer;font-family:'Space Grotesk',sans-serif;
+        ">📋 Full Details</button>
+      </div>`;
 
     marker.bindPopup(popupContent, { maxWidth: 260 });
 
-    // Also open drawer on click
-    marker.on('click', () => openDrawer(mine.id));
-
+    // Do NOT open drawer on click — let popup handle it
     marker.addTo(leafletMap);
     leafletMarkers.push(marker);
   });
