@@ -9,6 +9,8 @@
 <title>GMX Field Intelligence</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 /* ═══════════════════════════════
    DESIGN DIRECTION: Industrial-Premium
@@ -654,29 +656,53 @@ body{
    MAP PANEL
 ══════════════════════════════════════════ */
 .map-wrap{
-  background:var(--panel);border:1px solid var(--border);
+  border:1px solid var(--border);
   border-radius:var(--radius-lg);overflow:hidden;
-  height:520px;position:relative;
+  height:560px;position:relative;
 }
-.map-tip{
-  position:absolute;
-  background:var(--deep);border:1px solid var(--border2);
-  border-radius:12px;padding:14px 16px;min-width:210px;
-  pointer-events:none;opacity:0;transition:opacity 0.15s;
-  z-index:10;box-shadow:0 12px 32px rgba(0,0,0,0.5);
+#leaflet-map{ width:100%;height:100%; }
+
+/* Leaflet popup custom styling */
+.leaflet-popup-content-wrapper{
+  background:var(--deep) !important;
+  border:1px solid var(--border2) !important;
+  border-radius:12px !important;
+  box-shadow:0 12px 32px rgba(0,0,0,0.5) !important;
+  color:var(--text) !important;
 }
-.map-tip.show{opacity:1}
-.mt-name{font-family:'Instrument Serif',serif;font-size:14px;color:var(--text);font-style:italic}
-.mt-co{font-size:10px;color:var(--textdim);margin-bottom:8px}
-.mt-row{font-size:11px;color:var(--textdim);margin-bottom:3px}
-.mt-row strong{color:var(--text)}
+.leaflet-popup-tip{ background:var(--deep) !important; }
+.leaflet-popup-content{ margin:14px 16px !important; min-width:200px; }
+.leaflet-container{ font-family:'Space Grotesk',sans-serif !important; }
+.mt-name{font-family:'Instrument Serif',serif;font-size:15px;color:#fff;font-style:italic;margin-bottom:3px}
+.mt-co{font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:10px}
+.mt-row{font-size:11px;color:rgba(255,255,255,0.65);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.mt-row strong{color:#fff}
 .mt-link{
   display:block;margin-top:10px;text-align:center;
-  padding:6px;background:rgba(74,158,191,0.15);
-  border-radius:7px;color:var(--sky);font-size:11px;
-  font-weight:600;text-decoration:none;
+  padding:7px;background:rgba(74,158,191,0.2);
+  border-radius:7px;color:#6BBDD6;font-size:11px;
+  font-weight:600;text-decoration:none;border:1px solid rgba(74,158,191,0.3);
 }
-.mt-link:hover{background:rgba(74,158,191,0.25)}
+.mt-link:hover{background:rgba(74,158,191,0.35)}
+.leaflet-control-zoom a{
+  background:var(--surface) !important;
+  color:var(--text) !important;
+  border-color:var(--border2) !important;
+}
+.leaflet-control-zoom a:hover{ background:var(--raised) !important; }
+.leaflet-control-layers{
+  background:var(--surface) !important;
+  color:var(--text) !important;
+  border-color:var(--border2) !important;
+}
+.leaflet-control-layers label{ color:var(--text) !important; font-size:12px; }
+/* mine count badge on nav */
+.map-mine-count{
+  position:absolute;top:8px;right:8px;z-index:1000;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:8px;padding:6px 12px;
+  font-size:11px;font-weight:600;color:var(--textdim);
+}
 
 /* ══════════════════════════════════════════
    ADMIN PANEL
@@ -872,10 +898,10 @@ body{
   <div class="panel" id="panel-map">
     <div class="panel-hdr">
       <div class="panel-title">Mine Locations</div>
-      <div class="panel-sub">Hover a pin to preview · click 📍 to open Google Maps</div>
+      <div class="panel-sub">Real-time map · Click any pin to see mine details · Toggle satellite view top-right</div>
     </div>
     <div class="map-wrap" id="map-wrap">
-      <div class="map-tip" id="map-tip"></div>
+      <div id="leaflet-map"></div>
     </div>
   </div>
 
@@ -1433,100 +1459,134 @@ function renderPipeline(){
 }
 
 // ── MAP ──
+// ── LEAFLET MAP ──
+let leafletMap = null;
+let leafletMarkers = [];
+
 function renderMap(){
-  const mines = clients.filter(c=>c.type==='mine'&&c.coords);
-  const tip = document.getElementById('map-tip');
-  const container = document.getElementById('map-wrap');
+  const mines = clients.filter(c => c.type === 'mine' && c.coords);
 
-  // Build SVG map
-  const svg = `
-    <svg width="100%" height="100%" viewBox="0 0 800 520" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="bg2" cx="50%" cy="50%" r="60%">
-          <stop offset="0%" stop-color="#1B2D3F"/><stop offset="100%" stop-color="#0C1017"/>
-        </radialGradient>
-        <filter id="glow2"><feGaussianBlur stdDeviation="4" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <rect width="800" height="520" fill="url(#bg2)"/>
-      <g stroke="rgba(255,255,255,0.03)" stroke-width="1">
-        ${[130,260,390].map(y=>`<line x1="0" y1="${y}" x2="800" y2="${y}"/>`).join('')}
-        ${[160,320,480,640].map(x=>`<line x1="${x}" y1="0" x2="${x}" y2="520"/>`).join('')}
-      </g>
-      <!-- Zambia outline -->
-      <polygon points="195,65 265,58 318,78 370,62 430,74 490,60 542,84 572,92 602,112 618,144 608,178 628,222 608,262 618,302 598,342 574,366 562,394 532,424 500,448 460,454 418,476 378,488 338,474 298,488 258,474 228,454 196,434 172,402 156,366 148,328 154,286 144,246 154,204 162,172 172,136 184,106 195,65"
-        fill="#162D45" stroke="#2A4060" stroke-width="1.5"/>
-      <!-- Province labels -->
-      ${[
-        [230,190,'Copperbelt'],[170,360,'N.Western'],[310,200,'Northern'],
-        [440,200,'Muchinga'],[380,310,'Eastern'],[290,420,'Central/Southern']
-      ].map(([x,y,l])=>`<text x="${x}" y="${y}" fill="rgba(255,255,255,0.12)" font-size="9" font-family="Space Grotesk" text-anchor="middle">${l}</text>`).join('')}
-      <!-- Mine pins (approximate Zambia coords mapped to SVG) -->
-      ${mines.map((m,i)=>{
-        const pin = getMinePosition(m.coords);
-        const col = STAGE_DOTS[m.stage]||'#6B7280';
-        return `
-          <g class="map-pin" data-id="${m.id}" style="cursor:pointer"
-             onmouseenter="showMapTip(event,'${m.id}')"
-             onmouseleave="hideMapTip()"
-             onclick="openDrawer('${m.id}')">
-            <circle cx="${pin.x}" cy="${pin.y}" r="18" fill="${col}22"/>
-            <circle cx="${pin.x}" cy="${pin.y}" r="9" fill="${col}" filter="url(#glow2)"/>
-            <circle cx="${pin.x}" cy="${pin.y}" r="4" fill="#fff"/>
-            <text x="${pin.x}" y="${pin.y+22}" fill="rgba(255,255,255,0.6)"
-              font-size="8" font-family="Space Grotesk" text-anchor="middle">${m.clientId||''}</text>
-          </g>`;
-      }).join('')}
-      <!-- Legend -->
-      <rect x="14" y="14" width="148" height="100" rx="8" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.07)"/>
-      <text x="88" y="32" fill="rgba(255,255,255,0.6)" font-size="9" font-family="Space Grotesk" text-anchor="middle" font-weight="600">STAGE</text>
-      ${Object.entries(STAGE_DOTS).slice(0,5).map(([s,c],i)=>`
-        <circle cx="26" cy="${46+i*14}" r="4" fill="${c}"/>
-        <text x="36" y="${50+i*14}" fill="rgba(255,255,255,0.5)" font-size="8" font-family="Space Grotesk">${s}</text>
-      `).join('')}
-    </svg>`;
+  // Initialise map only once
+  if(!leafletMap){
+    leafletMap = L.map('leaflet-map', {
+      center: [-13.5, 28.0], // Centre of Zambia
+      zoom: 6,
+      zoomControl: true,
+    });
 
-  // Keep tip element, replace rest
-  const existing = container.querySelector('svg');
-  if(existing) existing.remove();
-  container.insertAdjacentHTML('beforeend', svg);
+    // Street map layer (default)
+    const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+      maxZoom: 19,
+    });
+
+    // Satellite layer (Esri)
+    const satellite = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '© Esri, Maxar, Earthstar Geographics',
+      maxZoom: 19,
+    });
+
+    // Terrain layer
+    const terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenTopoMap',
+      maxZoom: 17,
+    });
+
+    streets.addTo(leafletMap);
+
+    L.control.layers({
+      '🗺️ Street Map': streets,
+      '🛰️ Satellite': satellite,
+      '⛰️ Terrain': terrain,
+    }, {}, { position: 'topright' }).addTo(leafletMap);
+  }
+
+  // Clear existing markers
+  leafletMarkers.forEach(m => m.remove());
+  leafletMarkers = [];
+
+  // Stage colours
+  const stageColors = {
+    'Prospect':     '#6B7280',
+    'Qualified':    '#4A9EBF',
+    'Demo':         '#7A4A9E',
+    'Quotation':    '#D4A843',
+    'Negotiation':  '#C87941',
+    'Closed – Won': '#3A8C5A',
+    'Closed – Lost':'#C0392B',
+  };
+
+  mines.forEach(mine => {
+    const parts = mine.coords.split(',').map(s => parseFloat(s.trim()));
+    if(parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return;
+    const [lat, lon] = parts;
+    const color = stageColors[mine.stage] || '#6B7280';
+    const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+
+    // Custom coloured pin icon
+    const icon = L.divIcon({
+      className: '',
+      html: `
+        <div style="
+          width:36px;height:36px;border-radius:50%;
+          background:${color};
+          border:3px solid #fff;
+          box-shadow:0 3px 12px rgba(0,0,0,0.4);
+          display:flex;align-items:center;justify-content:center;
+          font-family:'Space Grotesk',sans-serif;
+          font-size:9px;font-weight:700;color:#fff;
+          cursor:pointer;
+          transition:transform 0.15s;
+        " title="${mine.name}">⛏️</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -20],
+    });
+
+    const marker = L.marker([lat, lon], { icon });
+
+    // Linked service companies
+    const linkedSvcs = clients.filter(s =>
+      s.type === 'service' && (s.linkedMines||[]).includes(mine.id)
+    );
+
+    const popupContent = `
+      <div class="mt-name">${mine.name}</div>
+      <div class="mt-co">${mine.company || ''} · ${mine.clientId || ''}</div>
+      <div class="mt-row">📍 <strong>${mine.province || '—'}</strong>${mine.district ? ', ' + mine.district : ''}</div>
+      <div class="mt-row">⛏️ <strong>${mine.commodity || '—'}</strong> · ${mine.method || '—'}</div>
+      <div class="mt-row">👷 <strong>${mine.assignedTo || '—'}</strong>
+        <span style="
+          padding:2px 7px;border-radius:10px;
+          background:${color}33;color:${color};
+          font-size:9px;font-weight:700;margin-left:4px;
+        ">${mine.stage || '—'}</span>
+      </div>
+      ${mine.procurementNeed === 'Yes – Immediate'
+        ? '<div class="mt-row" style="color:#E0705E;font-weight:600">🚨 Urgent Procurement Need</div>' : ''}
+      ${linkedSvcs.length
+        ? `<div class="mt-row" style="margin-top:6px">🔧 <strong>${linkedSvcs.map(s=>s.name).join(', ')}</strong></div>` : ''}
+      <a href="${mapsUrl}" target="_blank" class="mt-link">📍 Open in Google Maps</a>`;
+
+    marker.bindPopup(popupContent, { maxWidth: 260 });
+
+    // Also open drawer on click
+    marker.on('click', () => openDrawer(mine.id));
+
+    marker.addTo(leafletMap);
+    leafletMarkers.push(marker);
+  });
+
+  // Fit map to show all mines if any exist
+  if(mines.length > 0 && leafletMarkers.length > 0){
+    const group = L.featureGroup(leafletMarkers);
+    leafletMap.fitBounds(group.getBounds().pad(0.15));
+  }
+
+  // Force map to recalculate size (fixes rendering when panel was hidden)
+  setTimeout(() => leafletMap.invalidateSize(), 100);
 }
-
-function getMinePosition(coords){
-  if(!coords) return {x:400,y:260};
-  const [lat,lon] = coords.split(',').map(Number);
-  // Zambia approx: lat -8 to -18, lon 22 to 33
-  const x = Math.round(((lon-22)/(33-22)) * 560 + 120);
-  const y = Math.round(((lat-(-8))/((-18)-(-8))) * 400 + 50);
-  return {x: Math.max(50, Math.min(750,x)), y: Math.max(40, Math.min(480,y))};
-}
-
-window.showMapTip = function(e, id){
-  const c = clients.find(x=>x.id===id);
-  if(!c) return;
-  const tip = document.getElementById('map-tip');
-  const mapsUrl = c.coords?`https://www.google.com/maps?q=${encodeURIComponent(c.coords)}`:'#';
-  tip.innerHTML = `
-    <div class="mt-name">${c.name}</div>
-    <div class="mt-co">${c.company||''}</div>
-    <div class="mt-row">📍 <strong>${c.province||'—'}</strong></div>
-    <div class="mt-row">👷 <strong>${c.assignedTo||'—'}</strong> · <span class="stage-pill ${stageClass(c.stage)}" style="font-size:9px">${c.stage||'—'}</span></div>
-    ${c.procurementNeed==='Yes – Immediate'?'<div class="mt-row" style="color:var(--red)">🚨 <strong>Urgent Procurement</strong></div>':''}
-    <a href="${mapsUrl}" target="_blank" class="mt-link">📍 Open in Google Maps</a>`;
-
-  const rect = document.getElementById('map-wrap').getBoundingClientRect();
-  const svgEl = document.querySelector('#map-wrap svg');
-  if(!svgEl) return;
-  const svgRect = svgEl.getBoundingClientRect();
-  let tx = e.clientX - rect.left + 16;
-  let ty = e.clientY - rect.top  + 16;
-  if(tx+220 > rect.width)  tx -= 240;
-  if(ty+180 > rect.height) ty -= 180;
-  tip.style.left = tx+'px'; tip.style.top = ty+'px';
-  tip.classList.add('show');
-};
-window.hideMapTip = ()=>document.getElementById('map-tip').classList.remove('show');
 
 // ── ADMIN PANEL ──
 function renderAdminPanel(){
