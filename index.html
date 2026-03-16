@@ -384,7 +384,7 @@ body{
 ══════════════════════════════════════════ */
 .drawer-overlay{
   display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,0.7);z-index:200;
+  background:rgba(0,0,0,0.7);z-index:2000;
   backdrop-filter:blur(4px);
 }
 .drawer-overlay.open{display:flex;align-items:flex-end}
@@ -480,7 +480,7 @@ body{
 ══════════════════════════════════════════ */
 .wizard-overlay{
   display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,0.75);z-index:300;
+  background:rgba(0,0,0,0.75);z-index:2100;
   align-items:center;justify-content:center;padding:16px;
   overflow-y:auto;
 }
@@ -775,7 +775,7 @@ body{
   background:var(--raised);border:1px solid var(--border2);
   border-radius:var(--radius);padding:10px 20px;
   font-size:13px;font-weight:500;color:var(--text);
-  z-index:500;opacity:0;transition:all 0.3s;pointer-events:none;
+  z-index:4000;opacity:0;transition:all 0.3s;pointer-events:none;
   white-space:nowrap;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -1036,6 +1036,8 @@ function toast(msg, dur=2500){
   t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), dur);
 }
+// Escape values safely for HTML attributes (prevents broken fields with quotes/special chars)
+function esc(val){ return (val||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function initials(name){
   return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 }
@@ -1134,7 +1136,7 @@ function showPendingScreen(user){
   div.style.cssText = `
     position:fixed;inset:0;background:var(--ink);
     display:flex;align-items:center;justify-content:center;
-    z-index:999;padding:20px;
+    z-index:3000;padding:20px;
   `;
   div.innerHTML = `
     <div style="
@@ -1794,7 +1796,13 @@ window.openWizard = function(editId=null){
     if(c){ wizardData = JSON.parse(JSON.stringify(c)); wizardType = c.type; }
     document.getElementById('wiz-title').textContent = 'Edit Client';
     document.getElementById('wiz-type-row').style.display='none';
-    closeDrawer();
+    // Close drawer first, then open wizard after brief delay to avoid z-index clash
+    document.getElementById('drawer-overlay').classList.remove('open');
+    setTimeout(()=>{
+      setWizType(wizardData.type||'mine', true);
+      document.getElementById('wiz-overlay').classList.add('open');
+    }, 150);
+    return;
   } else {
     document.getElementById('wiz-title').textContent = 'Add New Client';
     document.getElementById('wiz-type-row').style.display='flex';
@@ -1836,16 +1844,16 @@ function renderWizard(){
   if(wizardType==='mine'){
     if(wizardStep===1) html = `
       <div class="form-row">
-        <div class="fg"><label>Mine Name <span class="req">*</span></label><input id="wf-name" value="${d.name||''}" placeholder="e.g. Lumwana Copper Mine"></div>
-        <div class="fg"><label>Company / Owner <span class="req">*</span></label><input id="wf-company" value="${d.company||''}" placeholder="e.g. Barrick Gold Corp"></div>
+        <div class="fg"><label>Mine Name <span class="req">*</span></label><input id="wf-name" value="${esc(d.name)}" placeholder="e.g. Lumwana Copper Mine"></div>
+        <div class="fg"><label>Company / Owner <span class="req">*</span></label><input id="wf-company" value="${esc(d.company)}" placeholder="e.g. Barrick Gold Corp"></div>
       </div>
       <div class="form-row three">
         <div class="fg"><label>Province</label><select id="wf-province">${PROVINCES.map(p=>`<option${p===d.province?' selected':''}>${p}</option>`).join('')}</select></div>
-        <div class="fg"><label>District</label><input id="wf-district" value="${d.district||''}" placeholder="e.g. Solwezi"></div>
-        <div class="fg"><label>GPS Coords</label><input id="wf-coords" value="${d.coords||''}" placeholder="-12.15, 25.87"></div>
+        <div class="fg"><label>District</label><input id="wf-district" value="${esc(d.district)}" placeholder="e.g. Solwezi"></div>
+        <div class="fg"><label>GPS Coords</label><input id="wf-coords" value="${esc(d.coords)}" placeholder="-12.15, 25.87"></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label>Commodity</label><input id="wf-commodity" value="${d.commodity||''}" placeholder="e.g. Copper, Gold"></div>
+        <div class="fg"><label>Commodity</label><input id="wf-commodity" value="${esc(d.commodity)}" placeholder="e.g. Copper, Gold"></div>
         <div class="fg"><label>Mining Method</label>
           <select id="wf-method">
             ${['Open Pit','Underground','Alluvial/Placer','Quarry','Heap Leach','Strip Mining','Other'].map(m=>`<option${m===d.method?' selected':''}>${m}</option>`).join('')}
@@ -1864,15 +1872,15 @@ function renderWizard(){
   } else {
     if(wizardStep===1) html = `
       <div class="form-row">
-        <div class="fg"><label>Company Name <span class="req">*</span></label><input id="wf-name" value="${d.name||''}" placeholder="e.g. Geo Survey Solutions Ltd"></div>
-        <div class="fg"><label>Trading Name / Brand</label><input id="wf-company" value="${d.company||''}" placeholder="e.g. GeoSS"></div>
+        <div class="fg"><label>Company Name <span class="req">*</span></label><input id="wf-name" value="${esc(d.name)}" placeholder="e.g. Geo Survey Solutions Ltd"></div>
+        <div class="fg"><label>Trading Name / Brand</label><input id="wf-company" value="${esc(d.company)}" placeholder="e.g. GeoSS"></div>
       </div>
       <div class="form-row">
         <div class="fg"><label>Province (based)</label><select id="wf-province"><option value="">— Province —</option>${PROVINCES.map(p=>`<option${p===d.province?' selected':''}>${p}</option>`).join('')}</select></div>
-        <div class="fg"><label>Town / City</label><input id="wf-district" value="${d.district||''}" placeholder="e.g. Ndola"></div>
+        <div class="fg"><label>Town / City</label><input id="wf-district" value="${esc(d.district)}" placeholder="e.g. Ndola"></div>
       </div>
       <div class="form-row single">
-        <div class="fg"><label>Services Offered</label><textarea id="wf-commodity">${d.commodity||''}</textarea></div>
+        <div class="fg"><label>Services Offered</label><textarea id="wf-commodity">${esc(d.commodity)}</textarea></div>
       </div>`;
     if(wizardStep===2) html = buildMineLinksStep(d);
     if(wizardStep===3) html = buildContactsStep(d);
@@ -1937,8 +1945,8 @@ window.addContactBlock = function(pre={}){
     <div class="wiz-contact-label">Contact #${id}</div>
     ${id>1?`<button class="btn-remove" onclick="document.getElementById('cb-${id}').remove()">✕</button>`:''}
     <div class="form-row">
-      <div class="fg"><label>Full Name <span class="req">*</span></label><input id="cn-${id}" value="${pre.name||''}" placeholder="Full name"></div>
-      <div class="fg"><label>Job Title</label><input id="cr-${id}" value="${pre.role||''}" placeholder="e.g. Chief Surveyor"></div>
+      <div class="fg"><label>Full Name <span class="req">*</span></label><input id="cn-${id}" value="${esc(pre.name)}" placeholder="Full name"></div>
+      <div class="fg"><label>Job Title</label><input id="cr-${id}" value="${esc(pre.role)}" placeholder="e.g. Chief Surveyor"></div>
     </div>
     <div class="form-row three">
       <div class="fg"><label>Department</label>
@@ -1946,8 +1954,8 @@ window.addContactBlock = function(pre={}){
           ${['Survey / Geomatics','Geo-Tech / Safety','IT / Systems','Fleet / Machine Control','Mine Planning','Management','Other'].map(d=>`<option${d===pre.dept?' selected':''}>${d}</option>`).join('')}
         </select>
       </div>
-      <div class="fg"><label>Phone <span class="req">*</span></label><input id="cp-${id}" value="${pre.phone||''}" placeholder="+260 9XX XXX"></div>
-      <div class="fg"><label>Email <span class="req">*</span></label><input id="ce-${id}" value="${pre.email||''}" placeholder="name@co.com"></div>
+      <div class="fg"><label>Phone <span class="req">*</span></label><input id="cp-${id}" value="${esc(pre.phone)}" placeholder="+260 9XX XXX"></div>
+      <div class="fg"><label>Email <span class="req">*</span></label><input id="ce-${id}" value="${esc(pre.email)}" placeholder="name@co.com"></div>
     </div>`;
   wrap.appendChild(div);
 };
